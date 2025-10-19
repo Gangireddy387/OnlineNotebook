@@ -159,8 +159,9 @@
             <div>
               <label class="block text-sm font-semibold text-gray-700 mb-2">
                 <i class="fas fa-university mr-2 text-primary"></i> College
+                <span v-if="user?.college" class="text-xs text-gray-500 ml-2">(Your college)</span>
               </label>
-              <select v-model="formData.collegeId" @change="onCollegeChange" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all">
+              <select v-model="formData.collegeId" @change="onCollegeChange" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all" :disabled="user?.college">
                 <option value="">Select College (Optional)</option>
                 <option v-for="college in colleges" :key="college.id" :value="college.id">
                   {{ college.name }}
@@ -171,8 +172,9 @@
             <div>
               <label class="block text-sm font-semibold text-gray-700 mb-2">
                 <i class="fas fa-building mr-2 text-primary"></i> Department
+                <span v-if="user?.department" class="text-xs text-gray-500 ml-2">(Your department)</span>
               </label>
-              <select v-model="formData.departmentId" @change="onDepartmentChange" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all">
+              <select v-model="formData.departmentId" @change="onDepartmentChange" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all" :disabled="user?.department">
                 <option value="">Select Department (Optional)</option>
                 <option v-for="dept in departments" :key="dept.id" :value="dept.id">
                   {{ dept.name }}
@@ -289,8 +291,24 @@ export default {
       subjectId: ''
     });
 
-    const colleges = computed(() => store.getters['notes/colleges']);
-    const departments = computed(() => store.getters['notes/departments']);
+    const colleges = computed(() => {
+      const user = store.getters['auth/user'];
+      if (user?.college) {
+        // Only show the user's college
+        return [user.college];
+      }
+      return store.getters['notes/colleges'];
+    });
+
+    const departments = computed(() => {
+      const user = store.getters['auth/user'];
+      if (user?.department) {
+        // Only show departments from the user's college
+        const allDepartments = store.getters['notes/departments'];
+        return allDepartments.filter(dept => dept.collegeId === user.college.id);
+      }
+      return store.getters['notes/departments'];
+    });
     const subjects = computed(() => store.getters['notes/subjects']);
 
     const triggerFileInput = () => {
@@ -447,8 +465,24 @@ export default {
     };
 
     onMounted(() => {
+      const user = store.getters['auth/user'];
+      
+      // Pre-select user's college and department if available
+      if (user?.college) {
+        formData.value.collegeId = user.college.id;
+      }
+      if (user?.department) {
+        formData.value.departmentId = user.department.id;
+      }
+      
+      // Load data
       store.dispatch('notes/fetchColleges');
-      store.dispatch('notes/fetchDepartments');
+      if (user?.college) {
+        // Only fetch departments for user's college
+        store.dispatch('notes/fetchDepartments', user.college.id);
+      } else {
+        store.dispatch('notes/fetchDepartments');
+      }
       store.dispatch('notes/fetchSubjects');
     });
 
@@ -462,6 +496,7 @@ export default {
       colleges,
       departments,
       subjects,
+      user: computed(() => store.getters['auth/user']),
       triggerFileInput,
       handleFileChange,
       removeFile,
