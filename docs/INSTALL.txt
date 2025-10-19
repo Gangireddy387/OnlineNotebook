@@ -1,0 +1,171 @@
+================================================================================
+                        ONLINE NOTEBOOK - INSTALLATION
+                     Student Resource Sharing Platform
+================================================================================
+
+QUICK INSTALLATION GUIDE
+========================
+
+Follow these steps to get the application running:
+
+STEP 1: PREREQUISITES
+---------------------
+Make sure you have installed:
+- Node.js (v14 or higher) - Download from nodejs.org
+- PostgreSQL (v12 or higher) - Download from postgresql.org
+- npm (comes with Node.js)
+
+Verify installation:
+  node --version
+  npm --version
+  psql --version
+
+STEP 2: DATABASE SETUP
+---------------------
+Open PostgreSQL command line (psql) or pgAdmin and run:
+
+  CREATE DATABASE online_notebook;
+
+Or use command line:
+  psql -U postgres
+  CREATE DATABASE online_notebook;
+  \q
+
+STEP 3: INSTALL BACKEND DEPENDENCIES
+-----------------------------------
+Open terminal in project root folder and run:
+
+  npm install
+
+Wait for all packages to install.
+
+STEP 4: INSTALL FRONTEND DEPENDENCIES
+------------------------------------
+In the same terminal:
+
+  cd client
+  npm install
+  cd ..
+
+STEP 5: CREATE ADMIN USER
+------------------------
+Run this command:
+
+  node scripts/createAdmin.js
+
+This creates an admin account:
+  Email: admin@onlinenotebook.com
+  Password: admin123
+
+IMPORTANT: Change password after first login!
+
+STEP 6: ADD SAMPLE DATA (RECOMMENDED)
+------------------------------------
+Run this command:
+
+  node scripts/seedData.js
+
+This adds:
+  - 3 sample colleges
+  - 8 departments
+  - 19 subjects
+
+STEP 7: START THE APPLICATION
+----------------------------
+
+FOR DEVELOPMENT (Recommended for testing):
+  
+  Open TWO terminal windows:
+  
+  Terminal 1 (Backend):
+    npm run dev
+  
+  Terminal 2 (Frontend):
+    cd client
+    npm run serve
+  
+  Then open browser: http://localhost:8080
+
+FOR PRODUCTION:
+  
+  npm run build
+  npm start
+  
+  Then open browser: http://localhost:5000
+
+STEP 8: LOGIN AND TEST
+---------------------
+1. Open the URL in your browser
+2. Click "Login" in navigation
+3. Use admin credentials:
+   Email: admin@onlinenotebook.com
+   Password: admin123
+4. Explore the admin dashboard
+
+STEP 9: TEST USER REGISTRATION
+-----------------------------
+1. Open new incognito/private window
+2. Click "Register"
+3. Fill in registration form
+4. Submit registration
+5. Go back to admin window
+6. Approve the user from Admin Dashboard
+7. Login as approved user and test features
+
+CONGRATULATIONS!
+===============
+Your Online Notebook application is now running!
+
+DEFAULT CREDENTIALS:
+-------------------
+Admin Login:
+  Email: admin@onlinenotebook.com
+  Password: admin123
+
+Database:
+  Host: localhost
+  Port: 5432
+  Database: online_notebook
+  User: postgres
+  Password: root
+
+NEXT STEPS:
+----------
+1. Change admin password
+2. Register test users
+3. Upload sample notes
+4. Test all features
+5. Customize for your needs
+
+TROUBLESHOOTING:
+---------------
+Problem: Database connection error
+Solution: Make sure PostgreSQL is running
+         Check credentials in .env file
+
+Problem: Port already in use
+Solution: Change PORT in .env file
+         Or stop other services using the port
+
+Problem: Module not found
+Solution: Delete node_modules and run npm install again
+
+FOR MORE HELP:
+-------------
+- Read README.md for detailed documentation
+- Check SETUP_GUIDE.md for troubleshooting
+- See FEATURES.md for complete feature list
+- Read DEPLOYMENT.md for production deployment
+
+SUPPORT:
+-------
+Email: support@onlinenotebook.com
+Documentation: All .md files in project root
+
+================================================================================
+                    HAPPY CODING! ENJOY YOUR APPLICATION!
+================================================================================
+
+Built with Node.js, Vue.js, PostgreSQL
+For BTech and Degree Students Worldwide
+
