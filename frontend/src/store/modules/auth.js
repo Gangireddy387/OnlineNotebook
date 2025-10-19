@@ -44,6 +44,11 @@ const actions = {
       localStorage.setItem('token', token);
       api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       
+      // Clear any existing chat state on login
+      commit('chat/SET_CURRENT_CHAT', null, { root: true });
+      commit('chat/SET_MESSAGES', [], { root: true });
+      commit('chat/SET_CHATS', [], { root: true });
+      
       commit('SET_TOKEN', token);
       commit('SET_USER', user);
       commit('SET_LOADING', false);
@@ -68,10 +73,44 @@ const actions = {
     }
   },
 
-  logout({ commit }) {
+  logout({ commit, dispatch }) {
     localStorage.removeItem('token');
     delete api.defaults.headers.common['Authorization'];
+    
+    // Clear chat state on logout
+    commit('chat/SET_CURRENT_CHAT', null, { root: true });
+    commit('chat/SET_MESSAGES', [], { root: true });
+    commit('chat/SET_CHATS', [], { root: true });
+    dispatch('chat/disconnectSocket', null, { root: true });
+    
     commit('LOGOUT');
+  },
+
+  async getAllUsers({ commit }) {
+    try {
+      console.log('=== AUTH STORE: getAllUsers ===');
+      console.log('Making API call to /users');
+      console.log('Current token:', localStorage.getItem('token'));
+      
+      const response = await api.get('/users');
+      console.log('Full response object:', response);
+      console.log('Response status:', response.status);
+      console.log('Response data:', response.data);
+      console.log('Response data type:', typeof response.data);
+      console.log('Is response.data array:', Array.isArray(response.data));
+      console.log('=== END AUTH STORE: getAllUsers ===');
+      
+      return response.data.users || response.data; // Handle both {users: []} and [] formats
+    } catch (error) {
+      console.error('=== AUTH STORE: getAllUsers ERROR ===');
+      console.error('Error object:', error);
+      console.error('Error message:', error.message);
+      console.error('Error response:', error.response);
+      console.error('Error status:', error.response?.status);
+      console.error('Error data:', error.response?.data);
+      console.error('=== END AUTH STORE ERROR ===');
+      throw error;
+    }
   }
 };
 

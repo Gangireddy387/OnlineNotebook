@@ -33,6 +33,11 @@ db.Department = require('./Department')(sequelize, Sequelize);
 db.Subject = require('./Subject')(sequelize, Sequelize);
 db.Note = require('./Note')(sequelize, Sequelize);
 db.Comment = require('./Comment')(sequelize, Sequelize);
+db.Chat = require('./Chat')(sequelize, Sequelize);
+db.Message = require('./Message')(sequelize, Sequelize);
+db.ChatRequest = require('./ChatRequest')(sequelize, Sequelize);
+db.ChatParticipant = require('./ChatParticipant')(sequelize, Sequelize);
+db.OnlineStatus = require('./OnlineStatus')(sequelize, Sequelize);
 
 // Define associations
 // User associations
@@ -73,6 +78,37 @@ db.Note.hasMany(db.Comment, { foreignKey: 'noteId', as: 'comments', onDelete: 'C
 // Comment associations
 db.Comment.belongsTo(db.User, { foreignKey: 'userId', as: 'user' });
 db.Comment.belongsTo(db.Note, { foreignKey: 'noteId', as: 'note' });
+
+// Chat associations
+db.Chat.belongsTo(db.User, { foreignKey: 'createdBy', as: 'creator' });
+db.Chat.hasMany(db.Message, { foreignKey: 'chatId', as: 'messages', onDelete: 'CASCADE' });
+db.Chat.hasMany(db.ChatParticipant, { foreignKey: 'chatId', as: 'participants', onDelete: 'CASCADE' });
+db.Chat.belongsToMany(db.User, { through: db.ChatParticipant, foreignKey: 'chatId', as: 'users' });
+
+// Message associations
+db.Message.belongsTo(db.Chat, { foreignKey: 'chatId', as: 'chat' });
+db.Message.belongsTo(db.User, { foreignKey: 'senderId', as: 'sender' });
+db.Message.belongsTo(db.Message, { foreignKey: 'replyTo', as: 'replyToMessage' });
+db.Message.hasMany(db.Message, { foreignKey: 'replyTo', as: 'replies' });
+
+// ChatRequest associations
+db.ChatRequest.belongsTo(db.User, { foreignKey: 'requesterId', as: 'requester' });
+db.ChatRequest.belongsTo(db.User, { foreignKey: 'receiverId', as: 'receiver' });
+
+// ChatParticipant associations
+db.ChatParticipant.belongsTo(db.Chat, { foreignKey: 'chatId', as: 'chat' });
+db.ChatParticipant.belongsTo(db.User, { foreignKey: 'userId', as: 'user' });
+db.User.belongsToMany(db.Chat, { through: db.ChatParticipant, foreignKey: 'userId', as: 'chats' });
+
+// OnlineStatus associations
+db.OnlineStatus.belongsTo(db.User, { foreignKey: 'userId', as: 'user' });
+db.User.hasOne(db.OnlineStatus, { foreignKey: 'userId', as: 'onlineStatus' });
+
+// Additional User associations for chat
+db.User.hasMany(db.Message, { foreignKey: 'senderId', as: 'sentMessages', onDelete: 'CASCADE' });
+db.User.hasMany(db.ChatRequest, { foreignKey: 'requesterId', as: 'sentChatRequests', onDelete: 'CASCADE' });
+db.User.hasMany(db.ChatRequest, { foreignKey: 'receiverId', as: 'receivedChatRequests', onDelete: 'CASCADE' });
+db.User.hasMany(db.ChatParticipant, { foreignKey: 'userId', as: 'chatParticipants', onDelete: 'CASCADE' });
 
 module.exports = db;
 

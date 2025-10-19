@@ -19,6 +19,9 @@
             <router-link v-if="isApproved" to="/upload" class="text-white px-4 py-2 rounded-lg hover:bg-white/10 transition-colors font-medium">
               Upload
             </router-link>
+            <router-link v-if="isApproved" to="/chat" class="text-white px-4 py-2 rounded-lg hover:bg-white/10 transition-colors font-medium">
+              Chat
+            </router-link>
             <router-link v-if="isAdmin" to="/admin" class="text-white px-4 py-2 rounded-lg hover:bg-white/10 transition-colors font-medium">
               Admin
             </router-link>
@@ -59,6 +62,9 @@
         <template v-if="isAuthenticated">
           <router-link v-if="isApproved" to="/upload" class="text-white px-4 py-3 rounded-lg hover:bg-white/10 transition-colors font-medium text-center">
             Upload
+          </router-link>
+          <router-link v-if="isApproved" to="/chat" class="text-white px-4 py-3 rounded-lg hover:bg-white/10 transition-colors font-medium text-center">
+            Chat
           </router-link>
           <router-link v-if="isAdmin" to="/admin" class="text-white px-4 py-3 rounded-lg hover:bg-white/10 transition-colors font-medium text-center">
             Admin

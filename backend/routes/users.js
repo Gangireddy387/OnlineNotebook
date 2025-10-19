@@ -54,5 +54,49 @@ router.put('/profile', protect, async (req, res) => {
   }
 });
 
+// @route   GET /api/users
+// @desc    Get all approved users (for chat)
+// @access  Private
+router.get('/', protect, async (req, res) => {
+  try {
+    console.log('Fetching users for user:', req.user.id);
+    console.log('User type:', req.userType);
+    
+    const users = await db.User.findAll({
+      where: { 
+        isApproved: true,
+        id: { [db.Sequelize.Op.ne]: req.user.id } // Exclude current user
+      },
+      attributes: ['id', 'name', 'email', 'year', 'rollNumber', 'createdAt'],
+      include: [
+        { 
+          model: db.College, 
+          as: 'college', 
+          attributes: ['id', 'name'] 
+        },
+        { 
+          model: db.Department, 
+          as: 'department', 
+          attributes: ['id', 'name'] 
+        },
+        {
+          model: db.OnlineStatus,
+          as: 'onlineStatus',
+          attributes: ['status', 'lastSeen']
+        }
+      ],
+      order: [['name', 'ASC']]
+    });
+
+    console.log('Found users:', users.length);
+    console.log('Users data:', users.map(u => ({ id: u.id, name: u.name, email: u.email })));
+    
+    res.json(users);
+  } catch (error) {
+    console.error('Error fetching users:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
 module.exports = router;
 

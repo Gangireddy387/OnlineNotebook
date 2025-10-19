@@ -118,6 +118,13 @@
             <i class="fas fa-users mr-2"></i>
             All Users
           </button>
+          <button
+            :class="['px-6 py-3 font-semibold transition-colors border-b-3', activeTab === 'chat' ? 'text-primary border-primary' : 'text-gray-600 border-transparent hover:text-primary']"
+            @click="activeTab = 'chat'"
+          >
+            <i class="fas fa-comments mr-2"></i>
+            Chat Monitor
+          </button>
         </div>
 
       <!-- Pending Users Tab -->
@@ -242,6 +249,24 @@
               </tbody>
             </table>
           </div>
+        </div>
+      </div>
+
+      <!-- Chat Monitor Tab -->
+      <div v-if="activeTab === 'chat'" class="bg-white rounded-xl shadow-md p-6">
+        <div class="text-center mb-6">
+          <h3 class="text-xl font-semibold text-gray-900 mb-2">Chat Monitor</h3>
+          <p class="text-gray-600">Monitor all conversations and chat activity across the platform</p>
+        </div>
+        
+        <div class="text-center">
+          <router-link 
+            to="/admin/chat-monitor" 
+            class="inline-flex items-center px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
+          >
+            <i class="fas fa-comments mr-2"></i>
+            Open Chat Monitor
+          </router-link>
         </div>
       </div>
     </div>
