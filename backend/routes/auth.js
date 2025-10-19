@@ -19,8 +19,8 @@ router.post('/register', [
   body('name').notEmpty().withMessage('Name is required'),
   body('email').isEmail().withMessage('Valid email is required'),
   body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
-  body('collegeName').notEmpty().withMessage('College name is required'),
-  body('department').notEmpty().withMessage('Department is required')
+  body('collegeId').notEmpty().withMessage('College is required'),
+  body('departmentId').notEmpty().withMessage('Department is required')
 ], async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -28,12 +28,24 @@ router.post('/register', [
   }
 
   try {
-    const { name, email, password, phone, collegeName, department, year, rollNumber } = req.body;
+    const { name, email, password, phone, collegeId, departmentId, year, rollNumber } = req.body;
 
     // Check if user exists
     const existingUser = await db.User.findOne({ where: { email } });
     if (existingUser) {
       return res.status(400).json({ message: 'User already exists with this email' });
+    }
+
+    // Verify college and department exist
+    const college = await db.College.findByPk(collegeId);
+    const department = await db.Department.findByPk(departmentId);
+    
+    if (!college) {
+      return res.status(400).json({ message: 'Invalid college selected' });
+    }
+    
+    if (!department || department.collegeId !== collegeId) {
+      return res.status(400).json({ message: 'Invalid department for selected college' });
     }
 
     // Create user
@@ -42,8 +54,8 @@ router.post('/register', [
       email,
       password,
       phone,
-      collegeName,
-      department,
+      collegeId,
+      departmentId,
       year,
       rollNumber,
       isApproved: false
@@ -79,8 +91,14 @@ router.post('/login', [
   try {
     const { email, password } = req.body;
 
-    // Check user exists
-    const user = await db.User.findOne({ where: { email } });
+    // Check user exists with college and department info
+    const user = await db.User.findOne({ 
+      where: { email },
+      include: [
+        { model: db.College, as: 'college' },
+        { model: db.Department, as: 'department' }
+      ]
+    });
     if (!user) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
@@ -110,7 +128,7 @@ router.post('/login', [
         email: user.email,
         role: user.role,
         isApproved: user.isApproved,
-        collegeName: user.collegeName,
+        college: user.college,
         department: user.department
       }
     });
@@ -126,7 +144,11 @@ router.post('/login', [
 router.get('/me', protect, async (req, res) => {
   try {
     const user = await db.User.findByPk(req.user.id, {
-      attributes: { exclude: ['password'] }
+      attributes: { exclude: ['password'] },
+      include: [
+        { model: db.College, as: 'college' },
+        { model: db.Department, as: 'department' }
+      ]
     });
 
     res.json({ user });

@@ -47,7 +47,7 @@
             </div>
             <div class="flex-1">
               <div class="text-sm text-gray-600 font-medium">College</div>
-              <div class="text-gray-800 font-semibold">{{ user?.collegeName }}</div>
+              <div class="text-gray-800 font-semibold">{{ user?.college?.name || 'Not provided' }}</div>
             </div>
           </div>
 
@@ -57,7 +57,7 @@
             </div>
             <div class="flex-1">
               <div class="text-sm text-gray-600 font-medium">Department</div>
-              <div class="text-gray-800 font-semibold">{{ user?.department }}</div>
+              <div class="text-gray-800 font-semibold">{{ user?.department?.name || 'Not provided' }}</div>
             </div>
           </div>
 

@@ -124,11 +124,11 @@
               </div>
               <div class="flex items-center gap-3 text-sm text-gray-700">
                 <i class="fas fa-university text-primary w-5"></i>
-                <span>{{ user.collegeName }}</span>
+                <span>{{ user.college?.name || 'N/A' }}</span>
               </div>
               <div class="flex items-center gap-3 text-sm text-gray-700">
                 <i class="fas fa-building text-primary w-5"></i>
-                <span>{{ user.department }}</span>
+                <span>{{ user.department?.name || 'N/A' }}</span>
               </div>
               <div class="flex items-center gap-3 text-sm text-gray-700">
                 <i class="fas fa-graduation-cap text-primary w-5"></i>
@@ -186,8 +186,8 @@
                 <tr v-for="user in allUsers" :key="user.id" class="border-b border-gray-200 hover:bg-gray-50 transition-colors">
                   <td class="px-6 py-4">{{ user.name }}</td>
                   <td class="px-6 py-4">{{ user.email }}</td>
-                  <td class="px-6 py-4">{{ user.collegeName }}</td>
-                  <td class="px-6 py-4">{{ user.department }}</td>
+                  <td class="px-6 py-4">{{ user.college?.name || 'N/A' }}</td>
+                  <td class="px-6 py-4">{{ user.department?.name || 'N/A' }}</td>
                   <td class="px-6 py-4">
                     <span v-if="user.isApproved" class="inline-block px-3 py-1 bg-success text-white text-xs font-semibold uppercase rounded-full">Approved</span>
                     <span v-else class="inline-block px-3 py-1 bg-warning text-white text-xs font-semibold uppercase rounded-full">Pending</span>

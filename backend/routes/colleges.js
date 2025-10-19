@@ -42,5 +42,38 @@ router.post('/', protect, authorize('admin'), async (req, res) => {
   }
 });
 
+// @route   POST /api/colleges/public
+// @desc    Create new college (public access for registration)
+// @access  Public
+router.post('/public', async (req, res) => {
+  try {
+    const { name, location, type } = req.body;
+
+    if (!name) {
+      return res.status(400).json({ message: 'College name is required' });
+    }
+
+    // Check if college already exists
+    const existingCollege = await db.College.findOne({ where: { name } });
+    if (existingCollege) {
+      return res.status(400).json({ message: 'College with this name already exists' });
+    }
+
+    const college = await db.College.create({ 
+      name, 
+      location: location || 'Unknown', 
+      type: type || 'Both' 
+    });
+
+    res.status(201).json({
+      message: 'College created successfully',
+      college
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
 module.exports = router;
 

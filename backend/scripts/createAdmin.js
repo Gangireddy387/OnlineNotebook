@@ -15,14 +15,25 @@ async function createAdmin() {
       process.exit(0);
     }
 
+    // Get or create a system college and department for admin
+    const systemCollege = await db.College.findOrCreate({
+      where: { name: 'System Administration' },
+      defaults: { location: 'System', type: 'Both' }
+    });
+
+    const systemDept = await db.Department.findOrCreate({
+      where: { name: 'Administration', collegeId: systemCollege[0].id },
+      defaults: { code: 'ADMIN' }
+    });
+
     // Create admin user
     const admin = await db.User.create({
       name: 'Admin',
       email: 'admin@onlinenotebook.com',
       password: 'admin123',
       phone: '1234567890',
-      collegeName: 'System',
-      department: 'Administration',
+      collegeId: systemCollege[0].id,
+      departmentId: systemDept[0].id,
       year: 'N/A',
       rollNumber: 'ADMIN001',
       role: 'admin',

@@ -11,6 +11,10 @@ router.get('/pending-users', protect, authorize('admin'), async (req, res) => {
     const users = await db.User.findAll({
       where: { isApproved: false },
       attributes: { exclude: ['password'] },
+      include: [
+        { model: db.College, as: 'college' },
+        { model: db.Department, as: 'department' }
+      ],
       order: [['createdAt', 'ASC']]
     });
 
@@ -83,6 +87,10 @@ router.get('/users', protect, authorize('admin'), async (req, res) => {
   try {
     const users = await db.User.findAll({
       attributes: { exclude: ['password'] },
+      include: [
+        { model: db.College, as: 'college' },
+        { model: db.Department, as: 'department' }
+      ],
       order: [['createdAt', 'DESC']]
     });
 

@@ -27,13 +27,21 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.STRING,
       allowNull: true
     },
-    collegeName: {
-      type: DataTypes.STRING,
-      allowNull: false
+    collegeId: {
+      type: DataTypes.UUID,
+      allowNull: false,
+      references: {
+        model: 'Colleges',
+        key: 'id'
+      }
     },
-    department: {
-      type: DataTypes.STRING,
-      allowNull: false
+    departmentId: {
+      type: DataTypes.UUID,
+      allowNull: false,
+      references: {
+        model: 'Departments',
+        key: 'id'
+      }
     },
     year: {
       type: DataTypes.STRING,
