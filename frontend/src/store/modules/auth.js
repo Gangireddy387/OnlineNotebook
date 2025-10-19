@@ -1,4 +1,4 @@
-import axios from 'axios';
+import api from '../../api/axios';
 
 const state = {
   token: localStorage.getItem('token') || null,
@@ -22,7 +22,7 @@ const actions = {
       commit('SET_LOADING', true);
       commit('SET_ERROR', null);
       
-      const response = await axios.post('/api/auth/register', userData);
+      const response = await api.post('/auth/register', userData);
       
       commit('SET_LOADING', false);
       return response.data;
@@ -38,11 +38,11 @@ const actions = {
       commit('SET_LOADING', true);
       commit('SET_ERROR', null);
       
-      const response = await axios.post('/api/auth/login', credentials);
+      const response = await api.post('/auth/login', credentials);
       const { token, user } = response.data;
       
       localStorage.setItem('token', token);
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       
       commit('SET_TOKEN', token);
       commit('SET_USER', user);
@@ -60,8 +60,8 @@ const actions = {
     if (!state.token) return;
     
     try {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${state.token}`;
-      const response = await axios.get('/api/auth/me');
+      api.defaults.headers.common['Authorization'] = `Bearer ${state.token}`;
+      const response = await api.get('/auth/me');
       commit('SET_USER', response.data.user);
     } catch (error) {
       commit('LOGOUT');
@@ -70,7 +70,7 @@ const actions = {
 
   logout({ commit }) {
     localStorage.removeItem('token');
-    delete axios.defaults.headers.common['Authorization'];
+    delete api.defaults.headers.common['Authorization'];
     commit('LOGOUT');
   }
 };

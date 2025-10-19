@@ -21,6 +21,13 @@ const storage = multer.diskStorage({
 
 // File filter
 const fileFilter = (req, file, cb) => {
+  console.log('File upload attempt:', {
+    fieldname: file.fieldname,
+    originalname: file.originalname,
+    mimetype: file.mimetype,
+    size: file.size
+  });
+
   const allowedTypes = [
     // Documents
     'application/pdf',
@@ -41,8 +48,10 @@ const fileFilter = (req, file, cb) => {
   ];
 
   if (allowedTypes.includes(file.mimetype)) {
+    console.log('File type accepted:', file.mimetype);
     cb(null, true);
   } else {
+    console.log('File type rejected:', file.mimetype);
     cb(new Error('Invalid file type. Only PDF, DOC, DOCX, PPT, PPTX, XLS, XLSX, TXT, and Image files are allowed.'), false);
   }
 };

@@ -48,7 +48,7 @@
                 <i class="fas fa-user text-2xl text-blue-600 mt-1"></i>
                 <div>
                   <strong class="block text-sm text-blue-900 mb-1">Uploaded by:</strong>
-                  <p class="text-gray-800 font-semibold">{{ note.User?.name }}</p>
+                  <p class="text-gray-800 font-semibold">{{ note.user?.name }}</p>
                 </div>
               </div>
 
@@ -88,17 +88,17 @@
 
             <!-- Categories -->
             <div class="flex flex-wrap gap-3">
-              <div v-if="note.College" class="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl font-semibold shadow-md">
+              <div v-if="note.college" class="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl font-semibold shadow-md">
                 <i class="fas fa-university"></i>
-                <span>{{ note.College.name }}</span>
+                <span>{{ note.college.name }}</span>
               </div>
-              <div v-if="note.Department" class="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-xl font-semibold shadow-md">
+              <div v-if="note.department" class="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-xl font-semibold shadow-md">
                 <i class="fas fa-building"></i>
-                <span>{{ note.Department.name }}</span>
+                <span>{{ note.department.name }}</span>
               </div>
-              <div v-if="note.Subject" class="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl font-semibold shadow-md">
+              <div v-if="note.subject" class="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl font-semibold shadow-md">
                 <i class="fas fa-book"></i>
-                <span>{{ note.Subject.name }}</span>
+                <span>{{ note.subject.name }}</span>
               </div>
             </div>
           </div>
@@ -108,7 +108,7 @@
         <div class="bg-white rounded-2xl shadow-xl p-6 md:p-8">
           <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-3">
             <i class="fas fa-comments text-primary"></i>
-            <span>Comments ({{ note.Comments?.length || 0 }})</span>
+            <span>Comments ({{ note.comments?.length || 0 }})</span>
           </h2>
 
           <!-- Add Comment Form -->
@@ -139,13 +139,13 @@
 
           <!-- Comments List -->
           <div class="space-y-4">
-            <div v-if="note.Comments && note.Comments.length > 0">
-              <div v-for="comment in note.Comments" :key="comment.id" class="border border-gray-200 rounded-xl p-5 hover:shadow-md transition-shadow bg-white">
+            <div v-if="note.comments && note.comments.length > 0">
+              <div v-for="comment in note.comments" :key="comment.id" class="border border-gray-200 rounded-xl p-5 hover:shadow-md transition-shadow bg-white">
                 <div class="flex items-start justify-between mb-3">
                   <div class="flex items-center gap-3">
                     <i class="fas fa-user-circle text-3xl text-primary"></i>
                     <div>
-                      <strong class="block text-gray-800 font-semibold">{{ comment.User?.name }}</strong>
+                      <strong class="block text-gray-800 font-semibold">{{ comment.user?.name }}</strong>
                       <span class="text-sm text-gray-500">{{ formatDate(comment.createdAt) }}</span>
                     </div>
                   </div>
@@ -181,6 +181,43 @@
 
     <!-- Preview Modal -->
     <PreviewModal :isOpen="showPreview" :note="note" @close="closePreview" />
+    
+    <!-- Delete Note Confirmation Modal -->
+    <ConfirmationModal
+      :show="showDeleteNoteModal"
+      title="Delete Note"
+      message="Are you sure you want to delete this note? This action cannot be undone."
+      confirm-text="Delete"
+      cancel-text="Cancel"
+      type="danger"
+      @confirm="confirmDeleteNote"
+      @cancel="cancelDeleteNote"
+      @close="cancelDeleteNote"
+    />
+    
+    <!-- Delete Comment Confirmation Modal -->
+    <ConfirmationModal
+      :show="showDeleteCommentModal"
+      title="Delete Comment"
+      message="Are you sure you want to delete this comment? This action cannot be undone."
+      confirm-text="Delete"
+      cancel-text="Cancel"
+      type="danger"
+      @confirm="confirmDeleteComment"
+      @cancel="cancelDeleteComment"
+      @close="cancelDeleteComment"
+    />
+    
+    <!-- Notification Modal -->
+    <ConfirmationModal
+      :show="showNotificationModal"
+      title="Notification"
+      :message="notificationMessage"
+      confirm-text="OK"
+      :type="notificationType"
+      @confirm="closeNotification"
+      @close="closeNotification"
+    />
   </div>
 </template>
 
@@ -189,11 +226,13 @@ import { ref, computed, onMounted } from 'vue';
 import { useStore } from 'vuex';
 import { useRoute, useRouter } from 'vue-router';
 import PreviewModal from '../components/PreviewModal.vue';
+import ConfirmationModal from '../components/ConfirmationModal.vue';
 
 export default {
   name: 'NoteDetail',
   components: {
-    PreviewModal
+    PreviewModal,
+    ConfirmationModal
   },
   setup() {
     const store = useStore();
@@ -202,6 +241,14 @@ export default {
 
     const newComment = ref('');
     const showPreview = ref(false);
+    
+    // Modal states
+    const showDeleteNoteModal = ref(false);
+    const showDeleteCommentModal = ref(false);
+    const showNotificationModal = ref(false);
+    const commentToDelete = ref(null);
+    const notificationMessage = ref('');
+    const notificationType = ref('info');
 
     const note = computed(() => store.getters['notes/currentNote']);
     const loading = computed(() => store.getters['notes/loading']);
@@ -243,31 +290,64 @@ export default {
         // Reload note to show new comment
         await store.dispatch('notes/fetchNote', route.params.id);
       } catch (error) {
-        alert('Failed to add comment');
+        showNotification('Failed to add comment', 'danger');
       }
     };
 
     const handleDelete = async () => {
-      if (confirm('Are you sure you want to delete this note?')) {
-        try {
-          await store.dispatch('notes/deleteNote', note.value.id);
-          router.push('/notes');
-        } catch (error) {
-          alert('Failed to delete note');
-        }
+      showDeleteNoteModal.value = true;
+    };
+
+    const confirmDeleteNote = async () => {
+      try {
+        await store.dispatch('notes/deleteNote', note.value.id);
+        router.push('/notes');
+      } catch (error) {
+        showNotification('Failed to delete note', 'danger');
       }
+      showDeleteNoteModal.value = false;
+    };
+
+    const cancelDeleteNote = () => {
+      showDeleteNoteModal.value = false;
     };
 
     const handleDeleteComment = async (commentId) => {
-      if (confirm('Are you sure you want to delete this comment?')) {
-        try {
-          await store.dispatch('notes/deleteComment', commentId);
-          // Reload note to update comments
-          await store.dispatch('notes/fetchNote', route.params.id);
-        } catch (error) {
-          alert('Failed to delete comment');
-        }
+      // Find the comment to get its details
+      const comment = note.value.comments.find(c => c.id === commentId);
+      if (!comment) return;
+      
+      commentToDelete.value = comment;
+      showDeleteCommentModal.value = true;
+    };
+
+    const confirmDeleteComment = async () => {
+      try {
+        await store.dispatch('notes/deleteComment', commentToDelete.value.id);
+        // Reload note to update comments
+        await store.dispatch('notes/fetchNote', route.params.id);
+      } catch (error) {
+        showNotification('Failed to delete comment', 'danger');
       }
+      showDeleteCommentModal.value = false;
+      commentToDelete.value = null;
+    };
+
+    const cancelDeleteComment = () => {
+      showDeleteCommentModal.value = false;
+      commentToDelete.value = null;
+    };
+
+    // Notification functions
+    const showNotification = (message, type = 'info') => {
+      notificationMessage.value = message;
+      notificationType.value = type;
+      showNotificationModal.value = true;
+    };
+
+    const closeNotification = () => {
+      showNotificationModal.value = false;
+      notificationMessage.value = '';
     };
 
     const openPreview = () => {
@@ -296,8 +376,18 @@ export default {
       handleAddComment,
       handleDelete,
       handleDeleteComment,
+      confirmDeleteNote,
+      cancelDeleteNote,
+      confirmDeleteComment,
+      cancelDeleteComment,
       openPreview,
-      closePreview
+      closePreview,
+      showDeleteNoteModal,
+      showDeleteCommentModal,
+      showNotificationModal,
+      notificationMessage,
+      notificationType,
+      closeNotification
     };
   }
 };

@@ -100,27 +100,31 @@
             <div class="flex items-center gap-4 mb-4 pb-4 border-b border-gray-200 text-sm">
               <div class="flex items-center gap-2 text-gray-600">
                 <i class="fas fa-user text-primary"></i>
-                <span class="font-medium">{{ note.User?.name }}</span>
+                <span class="font-medium">{{ note.user?.name }}</span>
               </div>
               <div class="flex items-center gap-2 text-gray-600">
                 <i class="fas fa-download text-success"></i>
                 <span class="font-medium">{{ note.downloads }}</span>
               </div>
+              <div class="flex items-center gap-2 text-gray-600">
+                <i class="fas fa-comments text-blue-500"></i>
+                <span class="font-medium">{{ note.comments?.length || 0 }}</span>
+              </div>
             </div>
 
             <!-- Tags -->
             <div class="flex flex-wrap gap-2 mb-4">
-              <div v-if="note.College" class="inline-flex items-center gap-1 px-3 py-1 bg-gradient-to-r from-blue-50 to-blue-100 text-blue-700 text-xs font-medium rounded-full">
+              <div v-if="note.college" class="inline-flex items-center gap-1 px-3 py-1 bg-gradient-to-r from-blue-50 to-blue-100 text-blue-700 text-xs font-medium rounded-full">
                 <i class="fas fa-university"></i>
-                <span>{{ note.College.name }}</span>
+                <span>{{ note.college.name }}</span>
               </div>
-              <div v-if="note.Department" class="inline-flex items-center gap-1 px-3 py-1 bg-gradient-to-r from-purple-50 to-purple-100 text-purple-700 text-xs font-medium rounded-full">
+              <div v-if="note.department" class="inline-flex items-center gap-1 px-3 py-1 bg-gradient-to-r from-purple-50 to-purple-100 text-purple-700 text-xs font-medium rounded-full">
                 <i class="fas fa-building"></i>
-                <span>{{ note.Department.name }}</span>
+                <span>{{ note.department.name }}</span>
               </div>
-              <div v-if="note.Subject" class="inline-flex items-center gap-1 px-3 py-1 bg-gradient-to-r from-green-50 to-green-100 text-green-700 text-xs font-medium rounded-full">
+              <div v-if="note.subject" class="inline-flex items-center gap-1 px-3 py-1 bg-gradient-to-r from-green-50 to-green-100 text-green-700 text-xs font-medium rounded-full">
                 <i class="fas fa-book"></i>
-                <span>{{ note.Subject.name }}</span>
+                <span>{{ note.subject.name }}</span>
               </div>
             </div>
 

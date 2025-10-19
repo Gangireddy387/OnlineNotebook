@@ -1,4 +1,4 @@
-import axios from 'axios';
+import api from '../../api/axios';
 
 const state = {
   notes: [],
@@ -28,7 +28,7 @@ const actions = {
   async fetchNotes({ commit }, filters = {}) {
     try {
       commit('SET_LOADING', true);
-      const response = await axios.get('/api/notes', { params: filters });
+      const response = await api.get('/notes', { params: filters });
       commit('SET_NOTES', response.data.notes);
       commit('SET_PAGINATION', {
         totalPages: response.data.totalPages,
@@ -44,7 +44,7 @@ const actions = {
   async fetchNote({ commit }, id) {
     try {
       commit('SET_LOADING', true);
-      const response = await axios.get(`/api/notes/${id}`);
+      const response = await api.get(`/notes/${id}`);
       commit('SET_CURRENT_NOTE', response.data.note);
       commit('SET_LOADING', false);
     } catch (error) {
@@ -56,7 +56,7 @@ const actions = {
   async uploadNote({ commit }, formData) {
     try {
       commit('SET_LOADING', true);
-      const response = await axios.post('/api/notes', formData, {
+      const response = await api.post('/notes', formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
@@ -72,7 +72,7 @@ const actions = {
 
   async deleteNote({ commit }, id) {
     try {
-      await axios.delete(`/api/notes/${id}`);
+      await api.delete(`/notes/${id}`);
       commit('REMOVE_NOTE', id);
     } catch (error) {
       commit('SET_ERROR', error.response?.data?.message || 'Failed to delete note');
@@ -82,7 +82,7 @@ const actions = {
 
   async addComment({ commit }, { noteId, content }) {
     try {
-      const response = await axios.post('/api/comments', { noteId, content });
+      const response = await api.post('/comments', { noteId, content });
       return response.data;
     } catch (error) {
       commit('SET_ERROR', error.response?.data?.message || 'Failed to add comment');
@@ -92,7 +92,7 @@ const actions = {
 
   async deleteComment({ commit }, id) {
     try {
-      await axios.delete(`/api/comments/${id}`);
+      await api.delete(`/comments/${id}`);
     } catch (error) {
       commit('SET_ERROR', error.response?.data?.message || 'Failed to delete comment');
       throw error;
@@ -101,7 +101,7 @@ const actions = {
 
   async fetchColleges({ commit }) {
     try {
-      const response = await axios.get('/api/colleges');
+      const response = await api.get('/colleges');
       commit('SET_COLLEGES', response.data.colleges);
     } catch (error) {
       commit('SET_ERROR', error.response?.data?.message || 'Failed to fetch colleges');
@@ -111,7 +111,7 @@ const actions = {
   async fetchDepartments({ commit }, collegeId) {
     try {
       const params = collegeId ? { collegeId } : {};
-      const response = await axios.get('/api/departments', { params });
+      const response = await api.get('/departments', { params });
       commit('SET_DEPARTMENTS', response.data.departments);
     } catch (error) {
       commit('SET_ERROR', error.response?.data?.message || 'Failed to fetch departments');
@@ -121,7 +121,7 @@ const actions = {
   async fetchSubjects({ commit }, departmentId) {
     try {
       const params = departmentId ? { departmentId } : {};
-      const response = await axios.get('/api/subjects', { params });
+      const response = await api.get('/subjects', { params });
       commit('SET_SUBJECTS', response.data.subjects);
     } catch (error) {
       commit('SET_ERROR', error.response?.data?.message || 'Failed to fetch subjects');
@@ -157,6 +157,9 @@ const mutations = {
   },
   REMOVE_NOTE(state, id) {
     state.notes = state.notes.filter(note => note.id !== id);
+  },
+  ADD_SUBJECT(state, subject) {
+    state.subjects.push(subject);
   }
 };
 

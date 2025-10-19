@@ -29,6 +29,7 @@ router.post('/', protect, isApproved, async (req, res) => {
     const commentWithUser = await db.Comment.findByPk(comment.id, {
       include: [{
         model: db.User,
+        as: 'user',
         attributes: ['id', 'name']
       }]
     });

@@ -54,23 +54,36 @@ const router = createRouter({
 });
 
 // Navigation guards
-router.beforeEach((to, from, next) => {
+router.beforeEach(async (to, from, next) => {
   const isAuthenticated = store.getters['auth/isAuthenticated'];
   const user = store.getters['auth/user'];
   const { showToast } = useNotification();
+
+  // If user has token but no user data, try to load it
+  if (isAuthenticated && !user) {
+    try {
+      await store.dispatch('auth/loadUser');
+    } catch (error) {
+      // If loading user fails, redirect to login
+      next({ name: 'Login', query: { redirect: to.fullPath } });
+      return;
+    }
+  }
 
   if (to.matched.some(record => record.meta.requiresAuth)) {
     if (!isAuthenticated) {
       next({ name: 'Login', query: { redirect: to.fullPath } });
     } else if (to.matched.some(record => record.meta.requiresApproval)) {
-      if (!user?.isApproved) {
+      const currentUser = store.getters['auth/user'];
+      if (!currentUser?.isApproved) {
         showToast('Account Pending', 'Your account is pending approval by admin', 'warning');
         next({ name: 'Home' });
       } else {
         next();
       }
     } else if (to.matched.some(record => record.meta.requiresAdmin)) {
-      if (user?.role !== 'admin' && user?.role !== 'super_admin' && user?.role !== 'moderator') {
+      const currentUser = store.getters['auth/user'];
+      if (currentUser?.role !== 'admin' && currentUser?.role !== 'super_admin' && currentUser?.role !== 'moderator') {
         showToast('Access Denied', 'Only administrators can access this area', 'error');
         next({ name: 'Home' });
       } else {

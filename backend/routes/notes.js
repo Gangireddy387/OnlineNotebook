@@ -33,7 +33,7 @@ router.get('/', async (req, res) => {
         {
           model: db.User,
           as: 'user',
-          attributes: ['id', 'name', 'collegeName']
+          attributes: ['id', 'name']
         },
         {
           model: db.College,
@@ -49,6 +49,12 @@ router.get('/', async (req, res) => {
           model: db.Subject,
           as: 'subject',
           attributes: ['id', 'name', 'code']
+        },
+        {
+          model: db.Comment,
+          as: 'comments',
+          attributes: ['id'],
+          required: false
         }
       ],
       order: [['createdAt', 'DESC']],
@@ -78,7 +84,7 @@ router.get('/:id', async (req, res) => {
         {
           model: db.User,
           as: 'user',
-          attributes: ['id', 'name', 'collegeName', 'department']
+          attributes: ['id', 'name']
         },
         {
           model: db.College,
@@ -122,8 +128,31 @@ router.get('/:id', async (req, res) => {
 // @route   POST /api/notes
 // @desc    Create new note
 // @access  Private (Approved users only)
-router.post('/', protect, isApproved, upload.single('file'), async (req, res) => {
+router.post('/', protect, isApproved, (req, res, next) => {
+  upload.single('file')(req, res, (err) => {
+    if (err) {
+      console.error('Multer error:', err);
+      return res.status(400).json({ 
+        message: err.message || 'File upload failed',
+        error: err.code 
+      });
+    }
+    next();
+  });
+}, async (req, res) => {
   try {
+    console.log('Upload request received:', {
+      hasFile: !!req.file,
+      fileInfo: req.file ? {
+        originalname: req.file.originalname,
+        mimetype: req.file.mimetype,
+        size: req.file.size,
+        path: req.file.path
+      } : null,
+      body: req.body,
+      user: req.user ? { id: req.user.id, name: req.user.name } : null
+    });
+
     if (!req.file) {
       return res.status(400).json({ message: 'Please upload a file' });
     }
@@ -158,14 +187,18 @@ router.post('/', protect, isApproved, upload.single('file'), async (req, res) =>
       note: noteWithDetails
     });
   } catch (error) {
-    console.error(error);
+    console.error('Upload error:', error);
     // Delete uploaded file if database insert fails
     if (req.file && req.file.path) {
       fs.unlink(req.file.path, (err) => {
         if (err) console.error('Error deleting file:', err);
       });
     }
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ 
+      message: 'Failed to upload note', 
+      error: error.message,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 });
 
@@ -204,15 +237,25 @@ router.delete('/:id', protect, async (req, res) => {
 // @access  Public
 router.get('/:id/preview', async (req, res) => {
   try {
+    console.log('Preview request for note ID:', req.params.id);
+    
     const note = await db.Note.findByPk(req.params.id);
+    console.log('Note found:', note ? 'Yes' : 'No');
 
     if (!note) {
+      console.log('Note not found');
       return res.status(404).json({ message: 'Note not found' });
     }
 
+    console.log('File path:', note.filePath);
+    console.log('File exists:', fs.existsSync(note.filePath));
+
     if (!fs.existsSync(note.filePath)) {
+      console.log('File not found on disk');
       return res.status(404).json({ message: 'File not found' });
     }
+
+    console.log('Serving file:', note.fileName, 'Type:', note.fileType);
 
     // Set content type and disposition for inline viewing
     res.setHeader('Content-Type', note.fileType);
@@ -222,7 +265,7 @@ router.get('/:id/preview', async (req, res) => {
     const fileStream = fs.createReadStream(note.filePath);
     fileStream.pipe(res);
   } catch (error) {
-    console.error(error);
+    console.error('Preview error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });

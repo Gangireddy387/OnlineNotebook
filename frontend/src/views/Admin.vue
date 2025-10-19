@@ -31,86 +31,94 @@
         <p class="text-lg text-gray-600">Manage user registrations and monitor platform activity</p>
       </div>
 
-      <!-- Statistics Grid -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 mb-12">
-        <div class="bg-white rounded-xl shadow-md p-6 flex items-center gap-4">
-          <div class="w-14 h-14 bg-primary rounded-xl flex items-center justify-center text-white text-2xl">
-            <i class="fas fa-users"></i>
-          </div>
-          <div>
-            <h3 class="text-3xl font-bold text-gray-800">{{ stats.totalUsers || 0 }}</h3>
-            <p class="text-sm text-gray-600">Total Users</p>
-          </div>
-        </div>
-
-        <div class="bg-white rounded-xl shadow-md p-6 flex items-center gap-4">
-          <div class="w-14 h-14 bg-warning rounded-xl flex items-center justify-center text-white text-2xl">
-            <i class="fas fa-clock"></i>
-          </div>
-          <div>
-            <h3 class="text-3xl font-bold text-gray-800">{{ stats.pendingUsers || 0 }}</h3>
-            <p class="text-sm text-gray-600">Pending Approvals</p>
-          </div>
-        </div>
-
-        <div class="bg-white rounded-xl shadow-md p-6 flex items-center gap-4">
-          <div class="w-14 h-14 bg-success rounded-xl flex items-center justify-center text-white text-2xl">
-            <i class="fas fa-check-circle"></i>
-          </div>
-          <div>
-            <h3 class="text-3xl font-bold text-gray-800">{{ stats.approvedUsers || 0 }}</h3>
-            <p class="text-sm text-gray-600">Approved Users</p>
-          </div>
-        </div>
-
-        <div class="bg-white rounded-xl shadow-md p-6 flex items-center gap-4">
-          <div class="w-14 h-14 bg-danger rounded-xl flex items-center justify-center text-white text-2xl">
-            <i class="fas fa-book"></i>
-          </div>
-          <div>
-            <h3 class="text-3xl font-bold text-gray-800">{{ stats.totalNotes || 0 }}</h3>
-            <p class="text-sm text-gray-600">Total Notes</p>
-          </div>
-        </div>
-
-        <div class="bg-white rounded-xl shadow-md p-6 flex items-center gap-4">
-          <div class="w-14 h-14 bg-purple-600 rounded-xl flex items-center justify-center text-white text-2xl">
-            <i class="fas fa-comments"></i>
-          </div>
-          <div>
-            <h3 class="text-3xl font-bold text-gray-800">{{ stats.totalComments || 0 }}</h3>
-            <p class="text-sm text-gray-600">Total Comments</p>
-          </div>
-        </div>
-
-        <div class="bg-white rounded-xl shadow-md p-6 flex items-center gap-4">
-          <div class="w-14 h-14 bg-teal-500 rounded-xl flex items-center justify-center text-white text-2xl">
-            <i class="fas fa-download"></i>
-          </div>
-          <div>
-            <h3 class="text-3xl font-bold text-gray-800">{{ stats.totalDownloads || 0 }}</h3>
-            <p class="text-sm text-gray-600">Total Downloads</p>
-          </div>
-        </div>
+      <!-- Loading State -->
+      <div v-if="!isUserLoaded" class="text-center py-16">
+        <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        <p class="mt-4 text-gray-600">Loading user data...</p>
       </div>
 
-      <!-- Tabs -->
-      <div class="flex gap-2 mb-8 border-b-2 border-gray-200">
-        <button
-          :class="['px-6 py-3 font-semibold transition-colors border-b-3', activeTab === 'pending' ? 'text-primary border-primary' : 'text-gray-600 border-transparent hover:text-primary']"
-          @click="activeTab = 'pending'"
-        >
-          <i class="fas fa-hourglass-half mr-2"></i>
-          Pending Users ({{ pendingUsers.length }})
-        </button>
-        <button
-          :class="['px-6 py-3 font-semibold transition-colors border-b-3', activeTab === 'all' ? 'text-primary border-primary' : 'text-gray-600 border-transparent hover:text-primary']"
-          @click="activeTab = 'all'"
-        >
-          <i class="fas fa-users mr-2"></i>
-          All Users
-        </button>
-      </div>
+      <!-- Admin Content -->
+      <div v-else-if="isAdmin">
+        <!-- Statistics Grid -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 mb-12">
+          <div class="bg-white rounded-xl shadow-md p-6 flex items-center gap-4">
+            <div class="w-14 h-14 bg-primary rounded-xl flex items-center justify-center text-white text-2xl">
+              <i class="fas fa-users"></i>
+            </div>
+            <div>
+              <h3 class="text-3xl font-bold text-gray-800">{{ stats.totalUsers || 0 }}</h3>
+              <p class="text-sm text-gray-600">Total Users</p>
+            </div>
+          </div>
+
+          <div class="bg-white rounded-xl shadow-md p-6 flex items-center gap-4">
+            <div class="w-14 h-14 bg-warning rounded-xl flex items-center justify-center text-white text-2xl">
+              <i class="fas fa-clock"></i>
+            </div>
+            <div>
+              <h3 class="text-3xl font-bold text-gray-800">{{ stats.pendingUsers || 0 }}</h3>
+              <p class="text-sm text-gray-600">Pending Approvals</p>
+            </div>
+          </div>
+
+          <div class="bg-white rounded-xl shadow-md p-6 flex items-center gap-4">
+            <div class="w-14 h-14 bg-success rounded-xl flex items-center justify-center text-white text-2xl">
+              <i class="fas fa-check-circle"></i>
+            </div>
+            <div>
+              <h3 class="text-3xl font-bold text-gray-800">{{ stats.approvedUsers || 0 }}</h3>
+              <p class="text-sm text-gray-600">Approved Users</p>
+            </div>
+          </div>
+
+          <div class="bg-white rounded-xl shadow-md p-6 flex items-center gap-4">
+            <div class="w-14 h-14 bg-danger rounded-xl flex items-center justify-center text-white text-2xl">
+              <i class="fas fa-book"></i>
+            </div>
+            <div>
+              <h3 class="text-3xl font-bold text-gray-800">{{ stats.totalNotes || 0 }}</h3>
+              <p class="text-sm text-gray-600">Total Notes</p>
+            </div>
+          </div>
+
+          <div class="bg-white rounded-xl shadow-md p-6 flex items-center gap-4">
+            <div class="w-14 h-14 bg-purple-600 rounded-xl flex items-center justify-center text-white text-2xl">
+              <i class="fas fa-comments"></i>
+            </div>
+            <div>
+              <h3 class="text-3xl font-bold text-gray-800">{{ stats.totalComments || 0 }}</h3>
+              <p class="text-sm text-gray-600">Total Comments</p>
+            </div>
+          </div>
+
+          <div class="bg-white rounded-xl shadow-md p-6 flex items-center gap-4">
+            <div class="w-14 h-14 bg-teal-500 rounded-xl flex items-center justify-center text-white text-2xl">
+              <i class="fas fa-download"></i>
+            </div>
+            <div>
+              <h3 class="text-3xl font-bold text-gray-800">{{ stats.totalDownloads || 0 }}</h3>
+              <p class="text-sm text-gray-600">Total Downloads</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="flex gap-2 mb-8 border-b-2 border-gray-200">
+          <button
+            :class="['px-6 py-3 font-semibold transition-colors border-b-3', activeTab === 'pending' ? 'text-primary border-primary' : 'text-gray-600 border-transparent hover:text-primary']"
+            @click="activeTab = 'pending'"
+          >
+            <i class="fas fa-hourglass-half mr-2"></i>
+            Pending Users ({{ pendingUsers.length }})
+          </button>
+          <button
+            :class="['px-6 py-3 font-semibold transition-colors border-b-3', activeTab === 'all' ? 'text-primary border-primary' : 'text-gray-600 border-transparent hover:text-primary']"
+            @click="activeTab = 'all'"
+          >
+            <i class="fas fa-users mr-2"></i>
+            All Users
+          </button>
+        </div>
 
       <!-- Pending Users Tab -->
       <div v-if="activeTab === 'pending'">
@@ -237,6 +245,22 @@
         </div>
       </div>
     </div>
+    
+    <!-- Access Denied Message -->
+    <div v-else class="text-center py-16">
+      <div class="max-w-md mx-auto">
+        <div class="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+          <i class="fas fa-exclamation-triangle text-3xl text-red-600"></i>
+        </div>
+        <h2 class="text-2xl font-bold text-gray-800 mb-4">Access Denied</h2>
+        <p class="text-gray-600 mb-6">Only administrators can access this area.</p>
+        <router-link to="/" class="inline-flex items-center px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors">
+          <i class="fas fa-home mr-2"></i>
+          Go to Home
+        </router-link>
+      </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -272,6 +296,17 @@ export default {
     const canApprove = computed(() => {
       const user = store.getters['auth/user'];
       return user?.role === 'super_admin' || user?.role === 'admin';
+    });
+
+    // Check if user data is loaded
+    const isUserLoaded = computed(() => {
+      return !!store.getters['auth/user'];
+    });
+
+    // Check if user is admin
+    const isAdmin = computed(() => {
+      const user = store.getters['auth/user'];
+      return user?.role === 'admin' || user?.role === 'super_admin' || user?.role === 'moderator';
     });
 
     // Modal state
@@ -401,9 +436,12 @@ export default {
     };
 
     onMounted(() => {
-      fetchStats();
-      fetchPendingUsers();
-      fetchAllUsers();
+      // Only load data if user is admin
+      if (isAdmin.value) {
+        fetchStats();
+        fetchPendingUsers();
+        fetchAllUsers();
+      }
     });
 
     return {
@@ -416,6 +454,8 @@ export default {
       handleApprove,
       handleReject,
       canApprove,
+      isUserLoaded,
+      isAdmin,
       // Modal state
       showConfirmModal,
       confirmModal,

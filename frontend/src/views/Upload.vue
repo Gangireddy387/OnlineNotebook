@@ -20,6 +20,114 @@
           {{ error }}
         </div>
 
+        <!-- Subject Creation Modal -->
+        <div v-if="showSubjectModal" class="fixed inset-0 z-50 overflow-y-auto" @click="closeSubjectModal">
+          <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+            <!-- Backdrop -->
+            <div class="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" aria-hidden="true"></div>
+
+            <!-- Modal -->
+            <div class="inline-block w-full max-w-md p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white shadow-xl rounded-2xl" @click.stop>
+              <!-- Header -->
+              <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-medium leading-6 text-gray-900">
+                  <i class="fas fa-plus-circle text-primary mr-2"></i>
+                  Create New Subject
+                </h3>
+                <button @click="closeSubjectModal" class="text-gray-400 hover:text-gray-600 transition-colors">
+                  <i class="fas fa-times text-xl"></i>
+                </button>
+              </div>
+
+              <!-- Form -->
+              <form @submit.prevent="createSubject" class="space-y-4">
+                <div>
+                  <label class="block text-sm font-semibold text-gray-700 mb-2">
+                    <i class="fas fa-book mr-2 text-primary"></i> Subject Name *
+                  </label>
+                  <input
+                    v-model="newSubject.name"
+                    type="text"
+                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
+                    placeholder="Enter subject name"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label class="block text-sm font-semibold text-gray-700 mb-2">
+                    <i class="fas fa-building mr-2 text-primary"></i> Department *
+                  </label>
+                  <select 
+                    v-model="newSubject.departmentId" 
+                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
+                    required
+                  >
+                    <option value="">Select Department</option>
+                    <option v-for="dept in departments" :key="dept.id" :value="dept.id">
+                      {{ dept.name }}
+                    </option>
+                  </select>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                  <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                      <i class="fas fa-code mr-2 text-primary"></i> Subject Code
+                    </label>
+                    <input
+                      v-model="newSubject.code"
+                      type="text"
+                      class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
+                      placeholder="e.g., CS101"
+                    />
+                  </div>
+
+                  <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                      <i class="fas fa-calendar mr-2 text-primary"></i> Semester
+                    </label>
+                    <select 
+                      v-model="newSubject.semester" 
+                      class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
+                    >
+                      <option value="">Select Semester</option>
+                      <option value="1">Semester 1</option>
+                      <option value="2">Semester 2</option>
+                      <option value="3">Semester 3</option>
+                      <option value="4">Semester 4</option>
+                      <option value="5">Semester 5</option>
+                      <option value="6">Semester 6</option>
+                      <option value="7">Semester 7</option>
+                      <option value="8">Semester 8</option>
+                    </select>
+                  </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="flex gap-3 mt-6">
+                  <button
+                    type="button"
+                    @click="closeSubjectModal"
+                    class="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    :disabled="subjectLoading"
+                    class="flex-1 px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary-dark rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors disabled:opacity-50"
+                  >
+                    <i v-if="subjectLoading" class="fas fa-spinner fa-spin mr-2"></i>
+                    <i v-else class="fas fa-plus mr-2"></i>
+                    {{ subjectLoading ? 'Creating...' : 'Create Subject' }}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+
         <!-- Upload Form -->
         <form @submit.prevent="handleUpload" class="space-y-6">
           <div>
@@ -77,12 +185,23 @@
             <label class="block text-sm font-semibold text-gray-700 mb-2">
               <i class="fas fa-book mr-2 text-primary"></i> Subject
             </label>
-            <select v-model="formData.subjectId" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all">
-              <option value="">Select Subject (Optional)</option>
-              <option v-for="subject in subjects" :key="subject.id" :value="subject.id">
-                {{ subject.name }}
-              </option>
-            </select>
+            <div class="flex gap-2">
+              <select v-model="formData.subjectId" class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all">
+                <option value="">Select Subject (Optional)</option>
+                <option v-for="subject in subjects" :key="subject.id" :value="subject.id">
+                  {{ subject.name }}
+                </option>
+              </select>
+              <button 
+                type="button" 
+                @click="openSubjectModal"
+                class="px-4 py-3 bg-primary hover:bg-primary-dark text-white rounded-lg transition-colors flex items-center gap-2"
+                title="Create new subject"
+              >
+                <i class="fas fa-plus"></i>
+                <span class="hidden sm:inline">New</span>
+              </button>
+            </div>
           </div>
 
           <div>
@@ -138,6 +257,7 @@
 import { ref, computed, onMounted } from 'vue';
 import { useStore } from 'vuex';
 import { useRouter } from 'vue-router';
+import axios from 'axios';
 
 export default {
   name: 'Upload',
@@ -150,6 +270,16 @@ export default {
     const loading = ref(false);
     const success = ref('');
     const error = ref('');
+
+    // Subject modal state
+    const showSubjectModal = ref(false);
+    const subjectLoading = ref(false);
+    const newSubject = ref({
+      name: '',
+      departmentId: '',
+      code: '',
+      semester: ''
+    });
 
     const formData = ref({
       title: '',
@@ -207,6 +337,70 @@ export default {
       }
     };
 
+    // Subject modal functions
+    const openSubjectModal = () => {
+      console.log('Opening subject modal');
+      console.log('Available departments:', departments.value);
+      showSubjectModal.value = true;
+      // Reset form
+      newSubject.value = {
+        name: '',
+        departmentId: '',
+        code: '',
+        semester: ''
+      };
+    };
+
+    const closeSubjectModal = () => {
+      showSubjectModal.value = false;
+      newSubject.value = {
+        name: '',
+        departmentId: '',
+        code: '',
+        semester: ''
+      };
+    };
+
+    const createSubject = async () => {
+      console.log('Creating subject with data:', newSubject.value);
+      
+      if (!newSubject.value.name || !newSubject.value.departmentId) {
+        error.value = 'Subject name and department are required';
+        return;
+      }
+
+      subjectLoading.value = true;
+      error.value = '';
+
+      try {
+        console.log('Sending request to /api/subjects/public');
+        const response = await axios.post('/api/subjects/public', newSubject.value);
+        console.log('Subject creation response:', response.data);
+        
+        // Add the new subject to the store
+        store.commit('notes/ADD_SUBJECT', response.data.subject);
+        
+        // Select the newly created subject
+        formData.value.subjectId = response.data.subject.id;
+        
+        // Close modal
+        closeSubjectModal();
+        
+        // Show success message
+        success.value = 'Subject created successfully!';
+        setTimeout(() => {
+          success.value = '';
+        }, 3000);
+        
+      } catch (err) {
+        console.error('Subject creation error:', err);
+        console.error('Error response:', err.response?.data);
+        error.value = err.response?.data?.message || 'Failed to create subject';
+      } finally {
+        subjectLoading.value = false;
+      }
+    };
+
     const handleUpload = async () => {
       if (!selectedFile.value) {
         error.value = 'Please select a file';
@@ -245,7 +439,8 @@ export default {
           router.push('/notes');
         }, 2000);
       } catch (err) {
-        error.value = err.response?.data?.message || 'Failed to upload note';
+        console.error('Upload error:', err);
+        error.value = err.response?.data?.message || err.message || 'Failed to upload note';
       } finally {
         loading.value = false;
       }
@@ -273,7 +468,14 @@ export default {
       formatFileSize,
       onCollegeChange,
       onDepartmentChange,
-      handleUpload
+      handleUpload,
+      // Subject modal
+      showSubjectModal,
+      subjectLoading,
+      newSubject,
+      openSubjectModal,
+      closeSubjectModal,
+      createSubject
     };
   }
 };
