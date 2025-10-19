@@ -286,14 +286,62 @@ router.put('/request/:requestId/respond', protect, async (req, res) => {
   }
 });
 
+// Function to deduplicate conversations by participant pairs
+function deduplicateConversations(chats) {
+  const chatMap = new Map();
+  
+  chats.forEach(chat => {
+    if (!chat.participants || chat.participants.length === 0) return;
+    
+    // Create a unique key for participant pairs (sorted by user ID)
+    const participantIds = chat.participants
+      .map(p => p.user.id)
+      .sort((a, b) => a - b);
+    
+    const key = participantIds.join('-');
+    
+    if (chatMap.has(key)) {
+      // Merge with existing chat
+      const existingChat = chatMap.get(key);
+      
+      // Keep the chat with more recent activity
+      const existingLastMessage = existingChat.lastMessageAt ? new Date(existingChat.lastMessageAt) : null;
+      const currentLastMessage = chat.lastMessageAt ? new Date(chat.lastMessageAt) : null;
+      
+      if (currentLastMessage && (!existingLastMessage || currentLastMessage > existingLastMessage)) {
+        // Current chat is more recent, replace existing
+        chatMap.set(key, chat);
+      }
+      // Otherwise keep existing chat
+    } else {
+      // First chat with this participant pair
+      chatMap.set(key, chat);
+    }
+  });
+  
+  return Array.from(chatMap.values());
+}
+
 // Admin route - Get all chats (for monitoring)
 router.get('/admin/all', protect, async (req, res) => {
   try {
-    // Check if user is admin
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ message: 'Access denied' });
+    console.log('Admin route: User type:', req.userType);
+    console.log('Admin route: User role:', req.user.role);
+    console.log('Admin route: User ID:', req.user.id);
+    
+    // Check if user is admin or super_admin
+    if (req.userType !== 'admin') {
+      console.log('Admin route: Access denied - not admin user type');
+      return res.status(403).json({ message: 'Access denied - admin access required' });
     }
     
+    // Additional check for super_admin role
+    if (req.user.role !== 'admin' && req.user.role !== 'super_admin' && req.user.role !== 'moderator') {
+      console.log('Admin route: Access denied - insufficient role:', req.user.role);
+      return res.status(403).json({ message: 'Access denied - insufficient permissions' });
+    }
+    
+    console.log('Admin route: Fetching chats from database...');
     const chats = await db.Chat.findAll({
       include: [
         {
@@ -301,20 +349,41 @@ router.get('/admin/all', protect, async (req, res) => {
           as: 'messages',
           include: [{ model: db.User, as: 'sender', attributes: ['id', 'name', 'email'] }],
           order: [['createdAt', 'DESC']],
-          limit: 1
+          limit: 1,
+          required: true, // INNER JOIN - only include chats that have actual messages
+          where: {
+            type: {
+              [db.Sequelize.Op.ne]: 'system' // Exclude system messages (like request messages)
+            }
+          }
         },
         {
           model: db.ChatParticipant,
           as: 'participants',
-          include: [{ model: db.User, as: 'user', attributes: ['id', 'name', 'email'] }]
+          include: [{ model: db.User, as: 'user', attributes: ['id', 'name', 'email'] }],
+          required: true // INNER JOIN to ensure we have participants
         }
       ],
-      order: [['lastMessageAt', 'DESC']]
+      where: {
+        lastMessageAt: {
+          [db.Sequelize.Op.ne]: null // Only show chats that have had messages
+        }
+      },
+      order: [
+        ['lastMessageAt', 'DESC'], // Order by most recent message activity
+        ['createdAt', 'DESC']
+      ]
     });
     
-    res.json(chats);
+    console.log('Admin route: Found chats:', chats.length);
+    
+    // Deduplicate conversations by participant pairs
+    const deduplicatedChats = deduplicateConversations(chats);
+    console.log('Admin route: Deduplicated chats:', deduplicatedChats.length);
+    
+    res.json(deduplicatedChats);
   } catch (error) {
-    console.error('Error fetching all chats:', error);
+    console.error('Admin route: Error fetching all chats:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -322,9 +391,14 @@ router.get('/admin/all', protect, async (req, res) => {
 // Admin route - Get all messages for a specific chat
 router.get('/admin/:chatId/messages', protect, async (req, res) => {
   try {
-    // Check if user is admin
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ message: 'Access denied' });
+    // Check if user is admin or super_admin
+    if (req.userType !== 'admin') {
+      return res.status(403).json({ message: 'Access denied - admin access required' });
+    }
+    
+    // Additional check for super_admin role
+    if (req.user.role !== 'admin' && req.user.role !== 'super_admin' && req.user.role !== 'moderator') {
+      return res.status(403).json({ message: 'Access denied - insufficient permissions' });
     }
     
     const { chatId } = req.params;
@@ -345,6 +419,35 @@ router.get('/admin/:chatId/messages', protect, async (req, res) => {
     res.json(messages);
   } catch (error) {
     console.error('Error fetching admin messages:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Admin route - Delete a message
+router.delete('/admin/message/:messageId', protect, async (req, res) => {
+  try {
+    // Check if user is admin or super_admin
+    if (req.userType !== 'admin') {
+      return res.status(403).json({ message: 'Access denied - admin access required' });
+    }
+    
+    // Additional check for super_admin role
+    if (req.user.role !== 'admin' && req.user.role !== 'super_admin' && req.user.role !== 'moderator') {
+      return res.status(403).json({ message: 'Access denied - insufficient permissions' });
+    }
+    
+    const { messageId } = req.params;
+    
+    const message = await db.Message.findByPk(messageId);
+    if (!message) {
+      return res.status(404).json({ message: 'Message not found' });
+    }
+    
+    await message.destroy();
+    
+    res.json({ message: 'Message deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting message:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });

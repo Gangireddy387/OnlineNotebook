@@ -164,11 +164,11 @@ export default {
     ...mapState('chat', ['chatRequests']),
     
     receivedRequests() {
-      return this.chatRequests.received || [];
+      return (this.chatRequests.received || []).filter(request => request.status !== 'accepted');
     },
     
     sentRequests() {
-      return this.chatRequests.sent || [];
+      return (this.chatRequests.sent || []).filter(request => request.status !== 'accepted');
     },
     
     pendingReceivedRequests() {
