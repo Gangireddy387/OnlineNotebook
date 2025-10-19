@@ -1,18 +1,16 @@
 const { Sequelize } = require('sequelize');
-const config = require('../config/database');
+require('dotenv').config();
 
-const env = process.env.NODE_ENV || 'development';
-const dbConfig = config[env];
-
+// Direct database configuration
 const sequelize = new Sequelize(
-  dbConfig.database,
-  dbConfig.username,
-  dbConfig.password,
+  process.env.DB_NAME || 'onlinenotebook',
+  process.env.DB_USER || 'postgres',
+  process.env.DB_PASSWORD || 'root',
   {
-    host: dbConfig.host,
-    port: dbConfig.port,
-    dialect: dbConfig.dialect,
-    logging: dbConfig.logging,
+    host: process.env.DB_HOST || 'localhost',
+    port: process.env.DB_PORT || 5432,
+    dialect: 'postgres',
+    logging: false,
     pool: {
       max: 5,
       min: 0,
@@ -29,6 +27,7 @@ db.sequelize = sequelize;
 
 // Import models
 db.User = require('./User')(sequelize, Sequelize);
+db.Admin = require('./Admin')(sequelize, Sequelize);
 db.College = require('./College')(sequelize, Sequelize);
 db.Department = require('./Department')(sequelize, Sequelize);
 db.Subject = require('./Subject')(sequelize, Sequelize);
@@ -41,6 +40,13 @@ db.User.belongsTo(db.College, { foreignKey: 'collegeId', as: 'college' });
 db.User.belongsTo(db.Department, { foreignKey: 'departmentId', as: 'department' });
 db.User.hasMany(db.Note, { foreignKey: 'userId', onDelete: 'CASCADE' });
 db.User.hasMany(db.Comment, { foreignKey: 'userId', onDelete: 'CASCADE' });
+
+// Admin associations
+db.Admin.belongsTo(db.Admin, { foreignKey: 'createdBy', as: 'creator' });
+db.Admin.belongsTo(db.Admin, { foreignKey: 'approvedBy', as: 'approver' });
+db.Admin.hasMany(db.Admin, { foreignKey: 'createdBy', as: 'createdAdmins' });
+db.Admin.hasMany(db.Admin, { foreignKey: 'approvedBy', as: 'approvedAdmins' });
+db.Admin.hasMany(db.User, { foreignKey: 'approvedBy', as: 'approvedUsers' });
 
 // College associations
 db.College.hasMany(db.Department, { foreignKey: 'collegeId', onDelete: 'CASCADE' });

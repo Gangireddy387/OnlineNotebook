@@ -32,18 +32,22 @@ router.get('/', async (req, res) => {
       include: [
         {
           model: db.User,
+          as: 'user',
           attributes: ['id', 'name', 'collegeName']
         },
         {
           model: db.College,
+          as: 'college',
           attributes: ['id', 'name']
         },
         {
           model: db.Department,
+          as: 'department',
           attributes: ['id', 'name']
         },
         {
           model: db.Subject,
+          as: 'subject',
           attributes: ['id', 'name', 'code']
         }
       ],
@@ -73,24 +77,30 @@ router.get('/:id', async (req, res) => {
       include: [
         {
           model: db.User,
+          as: 'user',
           attributes: ['id', 'name', 'collegeName', 'department']
         },
         {
           model: db.College,
+          as: 'college',
           attributes: ['id', 'name']
         },
         {
           model: db.Department,
+          as: 'department',
           attributes: ['id', 'name']
         },
         {
           model: db.Subject,
+          as: 'subject',
           attributes: ['id', 'name', 'code']
         },
         {
           model: db.Comment,
+          as: 'comments',
           include: [{
             model: db.User,
+            as: 'user',
             attributes: ['id', 'name']
           }],
           order: [['createdAt', 'DESC']]
@@ -136,10 +146,10 @@ router.post('/', protect, isApproved, upload.single('file'), async (req, res) =>
 
     const noteWithDetails = await db.Note.findByPk(note.id, {
       include: [
-        { model: db.User, attributes: ['id', 'name'] },
-        { model: db.College, attributes: ['id', 'name'] },
-        { model: db.Department, attributes: ['id', 'name'] },
-        { model: db.Subject, attributes: ['id', 'name'] }
+        { model: db.User, as: 'user', attributes: ['id', 'name'] },
+        { model: db.College, as: 'college', attributes: ['id', 'name'] },
+        { model: db.Department, as: 'department', attributes: ['id', 'name'] },
+        { model: db.Subject, as: 'subject', attributes: ['id', 'name'] }
       ]
     });
 

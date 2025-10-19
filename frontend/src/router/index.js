@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import store from '../store';
+import { useNotification } from '../composables/useNotification';
 
 const routes = [
   {
@@ -56,20 +57,21 @@ const router = createRouter({
 router.beforeEach((to, from, next) => {
   const isAuthenticated = store.getters['auth/isAuthenticated'];
   const user = store.getters['auth/user'];
+  const { showToast } = useNotification();
 
   if (to.matched.some(record => record.meta.requiresAuth)) {
     if (!isAuthenticated) {
       next({ name: 'Login', query: { redirect: to.fullPath } });
     } else if (to.matched.some(record => record.meta.requiresApproval)) {
       if (!user?.isApproved) {
-        alert('Your account is pending approval by admin');
+        showToast('Account Pending', 'Your account is pending approval by admin', 'warning');
         next({ name: 'Home' });
       } else {
         next();
       }
     } else if (to.matched.some(record => record.meta.requiresAdmin)) {
-      if (user?.role !== 'admin') {
-        alert('Access denied. Admin only.');
+      if (user?.role !== 'admin' && user?.role !== 'super_admin' && user?.role !== 'moderator') {
+        showToast('Access Denied', 'Only administrators can access this area', 'error');
         next({ name: 'Home' });
       } else {
         next();

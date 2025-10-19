@@ -15,9 +15,11 @@ router.get('/', async (req, res) => {
       where,
       include: [{
         model: db.Department,
+        as: 'department',
         attributes: ['id', 'name'],
         include: [{
           model: db.College,
+          as: 'college',
           attributes: ['id', 'name']
         }]
       }],

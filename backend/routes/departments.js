@@ -15,6 +15,7 @@ router.get('/', async (req, res) => {
       where,
       include: [{
         model: db.College,
+        as: 'college',
         attributes: ['id', 'name']
       }],
       order: [['name', 'ASC']]

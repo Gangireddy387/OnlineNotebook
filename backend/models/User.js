@@ -51,17 +51,17 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.STRING,
       allowNull: true
     },
-    role: {
-      type: DataTypes.ENUM('user', 'admin'),
-      defaultValue: 'user'
-    },
     isApproved: {
       type: DataTypes.BOOLEAN,
       defaultValue: false
     },
     approvedBy: {
       type: DataTypes.UUID,
-      allowNull: true
+      allowNull: true,
+      references: {
+        model: 'Admins',
+        key: 'id'
+      }
     },
     approvedAt: {
       type: DataTypes.DATE,

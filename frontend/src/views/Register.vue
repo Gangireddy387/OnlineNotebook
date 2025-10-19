@@ -82,9 +82,9 @@
                   class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
                   required
                 >
-                  <option value="">Select College</option>
+                  <option value="">Select College ({{ colleges.length }} available)</option>
                   <option v-for="college in colleges" :key="college.id" :value="college.id">
-                    {{ college.name }}
+                    {{ college.name }} ({{ college.type }})
                   </option>
                 </select>
                 <button 
@@ -100,27 +100,19 @@
 
             <div>
               <label class="block text-sm font-semibold text-gray-700 mb-2">Department *</label>
-              <div class="flex gap-2">
-                <select 
-                  v-model="formData.departmentId" 
-                  class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
-                  required
-                >
-                  <option value="">Select Department</option>
-                  <option v-for="dept in departments" :key="dept.id" :value="dept.id">
-                    {{ dept.name }}
-                  </option>
-                </select>
-                <button 
-                  type="button"
-                  @click="showDepartmentModal = true"
-                  class="px-4 py-3 bg-secondary hover:bg-secondary-dark text-white rounded-lg transition-colors"
-                  title="Add New Department"
-                  :disabled="!formData.collegeId"
-                >
-                  <i class="fas fa-plus"></i>
-                </button>
-              </div>
+              <select 
+                v-model="formData.departmentName" 
+                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
+                required
+                :disabled="!formData.collegeId"
+              >
+                <option value="">
+                  {{ formData.collegeId ? 'Select Department' : 'Please select a college first' }}
+                </option>
+                <option v-for="dept in departmentOptions" :key="dept.value" :value="dept.value">
+                  {{ dept.label }}
+                </option>
+              </select>
             </div>
           </div>
 
@@ -361,7 +353,7 @@ export default {
       password: '',
       phone: '',
       collegeId: '',
-      departmentId: '',
+      departmentName: '',
       year: '',
       rollNumber: ''
     });
@@ -394,7 +386,55 @@ export default {
 
     const loading = computed(() => store.getters['auth/loading']);
     const colleges = computed(() => store.getters['notes/colleges']);
-    const departments = computed(() => store.getters['notes/departments']);
+    
+    // Department options from enum
+    const allDepartmentOptions = [
+      // Engineering Departments
+      { value: 'Computer Science Engineering', label: 'Computer Science Engineering', code: 'CSE', type: 'Engineering' },
+      { value: 'Electronics and Communication Engineering', label: 'Electronics and Communication Engineering', code: 'ECE', type: 'Engineering' },
+      { value: 'Mechanical Engineering', label: 'Mechanical Engineering', code: 'MECH', type: 'Engineering' },
+      { value: 'Civil Engineering', label: 'Civil Engineering', code: 'CIVIL', type: 'Engineering' },
+      { value: 'Electrical Engineering', label: 'Electrical Engineering', code: 'EEE', type: 'Engineering' },
+      { value: 'Information Technology', label: 'Information Technology', code: 'IT', type: 'Engineering' },
+      { value: 'Aerospace Engineering', label: 'Aerospace Engineering', code: 'AERO', type: 'Engineering' },
+      { value: 'Chemical Engineering', label: 'Chemical Engineering', code: 'CHEM', type: 'Engineering' },
+      { value: 'Biotechnology Engineering', label: 'Biotechnology Engineering', code: 'BIO', type: 'Engineering' },
+      { value: 'Automobile Engineering', label: 'Automobile Engineering', code: 'AUTO', type: 'Engineering' },
+      // Degree Departments
+      { value: 'Bachelor of Science', label: 'Bachelor of Science', code: 'BSC', type: 'Degree' },
+      { value: 'Bachelor of Commerce', label: 'Bachelor of Commerce', code: 'BCOM', type: 'Degree' },
+      { value: 'Bachelor of Arts', label: 'Bachelor of Arts', code: 'BA', type: 'Degree' },
+      { value: 'Bachelor of Business Administration', label: 'Bachelor of Business Administration', code: 'BBA', type: 'Degree' },
+      { value: 'Bachelor of Computer Applications', label: 'Bachelor of Computer Applications', code: 'BCA', type: 'Degree' },
+      { value: 'Bachelor of Technology', label: 'Bachelor of Technology', code: 'BTECH', type: 'Degree' },
+      { value: 'Master of Science', label: 'Master of Science', code: 'MSC', type: 'Degree' },
+      { value: 'Master of Commerce', label: 'Master of Commerce', code: 'MCOM', type: 'Degree' },
+      { value: 'Master of Arts', label: 'Master of Arts', code: 'MA', type: 'Degree' },
+      { value: 'Master of Business Administration', label: 'Master of Business Administration', code: 'MBA', type: 'Degree' }
+    ];
+
+    // Filtered department options based on selected college type
+    const departmentOptions = computed(() => {
+      if (!formData.value.collegeId) {
+        return [];
+      }
+      
+      const selectedCollege = colleges.value.find(c => c.id === formData.value.collegeId);
+      if (!selectedCollege) {
+        return [];
+      }
+
+      // Filter departments based on college type
+      if (selectedCollege.type === 'Engineering') {
+        return allDepartmentOptions.filter(dept => dept.type === 'Engineering');
+      } else if (selectedCollege.type === 'Degree') {
+        return allDepartmentOptions.filter(dept => dept.type === 'Degree');
+      } else if (selectedCollege.type === 'Both') {
+        return allDepartmentOptions; // Show all departments for 'Both' type
+      }
+      
+      return [];
+    });
 
     const selectedCollegeName = computed(() => {
       const college = colleges.value.find(c => c.id === formData.value.collegeId);
@@ -402,10 +442,7 @@ export default {
     });
 
     const onCollegeChange = () => {
-      formData.value.departmentId = '';
-      if (formData.value.collegeId) {
-        store.dispatch('notes/fetchDepartments', formData.value.collegeId);
-      }
+      formData.value.departmentName = '';
     };
 
     const closeCollegeModal = () => {
@@ -504,7 +541,7 @@ export default {
           password: '',
           phone: '',
           collegeId: '',
-          departmentId: '',
+          departmentName: '',
           year: '',
           rollNumber: ''
         };
@@ -514,7 +551,12 @@ export default {
     };
 
     onMounted(() => {
-      store.dispatch('notes/fetchColleges');
+      console.log('Register component mounted, fetching colleges...');
+      store.dispatch('notes/fetchColleges').then(() => {
+        console.log('Colleges fetched:', store.getters['notes/colleges']);
+      }).catch(error => {
+        console.error('Error fetching colleges:', error);
+      });
     });
 
     return {
@@ -523,7 +565,7 @@ export default {
       success,
       error,
       colleges,
-      departments,
+      departmentOptions,
       onCollegeChange,
       handleRegister,
       // College modal
@@ -534,14 +576,6 @@ export default {
       collegeSuccess,
       closeCollegeModal,
       handleCreateCollege,
-      // Department modal
-      showDepartmentModal,
-      departmentForm,
-      departmentLoading,
-      departmentError,
-      departmentSuccess,
-      closeDepartmentModal,
-      handleCreateDepartment,
       selectedCollegeName
     };
   }

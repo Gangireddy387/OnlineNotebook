@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../models');
-const { protect, authorize } = require('../middleware/auth');
+const { protect, isAdmin } = require('../middleware/auth');
 
 // @route   GET /api/colleges
 // @desc    Get all colleges
@@ -22,7 +22,7 @@ router.get('/', async (req, res) => {
 // @route   POST /api/colleges
 // @desc    Create new college
 // @access  Private (Admin only)
-router.post('/', protect, authorize('admin'), async (req, res) => {
+router.post('/', protect, isAdmin, async (req, res) => {
   try {
     const { name, location, type } = req.body;
 

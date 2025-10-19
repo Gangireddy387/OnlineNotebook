@@ -6,7 +6,30 @@ module.exports = (sequelize, DataTypes) => {
       primaryKey: true
     },
     name: {
-      type: DataTypes.STRING,
+      type: DataTypes.ENUM(
+        // Engineering Departments
+        'Computer Science Engineering',
+        'Electronics and Communication Engineering', 
+        'Mechanical Engineering',
+        'Civil Engineering',
+        'Electrical Engineering',
+        'Information Technology',
+        'Aerospace Engineering',
+        'Chemical Engineering',
+        'Biotechnology Engineering',
+        'Automobile Engineering',
+        // Degree Departments
+        'Bachelor of Science',
+        'Bachelor of Commerce',
+        'Bachelor of Arts',
+        'Bachelor of Business Administration',
+        'Bachelor of Computer Applications',
+        'Bachelor of Technology',
+        'Master of Science',
+        'Master of Commerce',
+        'Master of Arts',
+        'Master of Business Administration'
+      ),
       allowNull: false
     },
     collegeId: {
@@ -16,10 +39,6 @@ module.exports = (sequelize, DataTypes) => {
         model: 'Colleges',
         key: 'id'
       }
-    },
-    code: {
-      type: DataTypes.STRING,
-      allowNull: true
     }
   }, {
     timestamps: true

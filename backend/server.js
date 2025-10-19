@@ -18,11 +18,30 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // Database
 const db = require('./models');
 
-// Sync database
-db.sequelize.sync({ alter: true }).then(() => {
-  console.log('Database synced successfully');
+// Sync database with automatic schema updates
+const syncOptions = {
+  alter: true,           // Modify existing tables to match model definitions
+  force: false,          // Don't drop tables (safer for production)
+  logging: console.log,  // Show SQL queries for debugging
+  benchmark: true        // Show execution time
+};
+
+// Environment-specific sync options
+if (process.env.NODE_ENV === 'development') {
+  syncOptions.logging = console.log;
+  console.log('🔧 Development mode: Detailed logging enabled');
+} else if (process.env.NODE_ENV === 'production') {
+  syncOptions.logging = false;
+  console.log('🚀 Production mode: Logging disabled');
+}
+
+db.sequelize.sync(syncOptions).then(() => {
+  console.log('✅ Database synced successfully');
+  console.log('📊 Model changes applied automatically');
+  console.log('🔗 All associations established');
 }).catch(err => {
-  console.error('Error syncing database:', err);
+  console.error('❌ Error syncing database:', err);
+  process.exit(1);
 });
 
 // Routes

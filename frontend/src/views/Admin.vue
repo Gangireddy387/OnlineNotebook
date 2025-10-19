@@ -1,6 +1,28 @@
 <template>
   <div class="py-12 px-4 sm:px-6 lg:px-8">
     <div class="max-w-7xl mx-auto">
+      
+      <!-- Custom Confirmation Modal -->
+      <ConfirmationModal
+        :show="showConfirmModal"
+        :title="confirmModal.title"
+        :message="confirmModal.message"
+        :type="confirmModal.type"
+        :confirm-text="confirmModal.confirmText"
+        :cancel-text="confirmModal.cancelText"
+        @confirm="handleConfirmAction"
+        @cancel="handleCancelAction"
+        @close="handleCancelAction"
+      />
+
+      <!-- Notification Toast -->
+      <NotificationToast
+        :show="showNotification"
+        :title="notification.title"
+        :message="notification.message"
+        :type="notification.type"
+        @close="showNotification = false"
+      />
       <!-- Header -->
       <div class="text-center mb-12">
         <h1 class="text-4xl font-bold text-gray-800 mb-3">
@@ -145,12 +167,23 @@
             </div>
 
             <div class="flex gap-3">
-              <button @click="handleApprove(user.id)" class="flex-1 bg-success hover:bg-success-dark text-white font-semibold py-2 px-4 rounded-lg transition-colors">
+              <button 
+                v-if="canApprove"
+                @click="handleApprove(user.id)" 
+                class="flex-1 bg-success hover:bg-success-dark text-white font-semibold py-2 px-4 rounded-lg transition-colors"
+              >
                 <i class="fas fa-check mr-2"></i> Approve
               </button>
-              <button @click="handleReject(user.id)" class="flex-1 bg-danger hover:bg-danger-dark text-white font-semibold py-2 px-4 rounded-lg transition-colors">
+              <button 
+                v-if="canApprove"
+                @click="handleReject(user.id)" 
+                class="flex-1 bg-danger hover:bg-danger-dark text-white font-semibold py-2 px-4 rounded-lg transition-colors"
+              >
                 <i class="fas fa-times mr-2"></i> Reject
               </button>
+              <div v-if="!canApprove" class="flex-1 text-center py-2 px-4 text-gray-500 text-sm">
+                <i class="fas fa-info-circle mr-2"></i> Only admins can approve users
+              </div>
             </div>
           </div>
         </div>
@@ -208,12 +241,20 @@
 </template>
 
 <script>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import axios from 'axios';
+import ConfirmationModal from '../components/ConfirmationModal.vue';
+import NotificationToast from '../components/NotificationToast.vue';
+import { useStore } from 'vuex';
 
 export default {
   name: 'Admin',
+  components: {
+    ConfirmationModal,
+    NotificationToast
+  },
   setup() {
+    const store = useStore();
     const activeTab = ref('pending');
     const loading = ref(false);
     const pendingUsers = ref([]);
@@ -225,6 +266,31 @@ export default {
       totalNotes: 0,
       totalComments: 0,
       totalDownloads: 0
+    });
+
+    // Check if current user can approve (only super_admin and admin)
+    const canApprove = computed(() => {
+      const user = store.getters['auth/user'];
+      return user?.role === 'super_admin' || user?.role === 'admin';
+    });
+
+    // Modal state
+    const showConfirmModal = ref(false);
+    const confirmModal = ref({
+      title: '',
+      message: '',
+      type: 'warning',
+      confirmText: 'Confirm',
+      cancelText: 'Cancel'
+    });
+    const pendingAction = ref(null);
+
+    // Notification state
+    const showNotification = ref(false);
+    const notification = ref({
+      title: '',
+      message: '',
+      type: 'success'
     });
 
     const formatDate = (date) => {
@@ -268,30 +334,70 @@ export default {
       }
     };
 
-    const handleApprove = async (userId) => {
-      if (confirm('Are you sure you want to approve this user?')) {
+    // Show notification
+    const showToast = (title, message, type = 'success') => {
+      notification.value = { title, message, type };
+      showNotification.value = true;
+    };
+
+    // Show confirmation modal
+    const showConfirm = (title, message, type = 'warning', confirmText = 'Confirm', cancelText = 'Cancel') => {
+      confirmModal.value = { title, message, type, confirmText, cancelText };
+      showConfirmModal.value = true;
+    };
+
+    // Handle modal confirmation
+    const handleConfirmAction = async () => {
+      showConfirmModal.value = false;
+      
+      if (pendingAction.value) {
+        const { action, userId } = pendingAction.value;
+        pendingAction.value = null;
+        
         try {
-          await axios.put(`/api/admin/approve-user/${userId}`);
-          alert('User approved successfully!');
-          fetchPendingUsers();
-          fetchStats();
+          if (action === 'approve') {
+            await axios.put(`/api/admin/approve-user/${userId}`);
+            showToast('Success!', 'User approved successfully!', 'success');
+            fetchPendingUsers();
+            fetchStats();
+          } else if (action === 'reject') {
+            await axios.delete(`/api/admin/reject-user/${userId}`);
+            showToast('Success!', 'User registration rejected', 'success');
+            fetchPendingUsers();
+            fetchStats();
+          }
         } catch (error) {
-          alert('Failed to approve user');
+          showToast('Error!', `Failed to ${action} user`, 'error');
         }
       }
     };
 
-    const handleReject = async (userId) => {
-      if (confirm('Are you sure you want to reject and delete this user registration?')) {
-        try {
-          await axios.delete(`/api/admin/reject-user/${userId}`);
-          alert('User registration rejected');
-          fetchPendingUsers();
-          fetchStats();
-        } catch (error) {
-          alert('Failed to reject user');
-        }
-      }
+    // Handle modal cancellation
+    const handleCancelAction = () => {
+      showConfirmModal.value = false;
+      pendingAction.value = null;
+    };
+
+    const handleApprove = (userId) => {
+      pendingAction.value = { action: 'approve', userId };
+      showConfirm(
+        'Approve User',
+        'Are you sure you want to approve this user? They will be able to access all platform features.',
+        'success',
+        'Approve',
+        'Cancel'
+      );
+    };
+
+    const handleReject = (userId) => {
+      pendingAction.value = { action: 'reject', userId };
+      showConfirm(
+        'Reject User',
+        'Are you sure you want to reject and delete this user registration? This action cannot be undone.',
+        'danger',
+        'Reject',
+        'Cancel'
+      );
     };
 
     onMounted(() => {
@@ -308,7 +414,16 @@ export default {
       stats,
       formatDate,
       handleApprove,
-      handleReject
+      handleReject,
+      canApprove,
+      // Modal state
+      showConfirmModal,
+      confirmModal,
+      handleConfirmAction,
+      handleCancelAction,
+      // Notification state
+      showNotification,
+      notification
     };
   }
 };

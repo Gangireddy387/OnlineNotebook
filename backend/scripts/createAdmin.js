@@ -5,7 +5,7 @@ async function createAdmin() {
     console.log('Creating admin user...');
 
     // Check if admin already exists
-    const existingAdmin = await db.User.findOne({
+    const existingAdmin = await db.Admin.findOne({
       where: { email: 'admin@onlinenotebook.com' }
     });
 
@@ -15,29 +15,26 @@ async function createAdmin() {
       process.exit(0);
     }
 
-    // Get or create a system college and department for admin
-    const systemCollege = await db.College.findOrCreate({
-      where: { name: 'System Administration' },
-      defaults: { location: 'System', type: 'Both' }
-    });
-
-    const systemDept = await db.Department.findOrCreate({
-      where: { name: 'Administration', collegeId: systemCollege[0].id },
-      defaults: { code: 'ADMIN' }
-    });
-
-    // Create admin user
-    const admin = await db.User.create({
-      name: 'Admin',
+    // Create admin user using the new Admin model
+    const admin = await db.Admin.create({
+      name: 'System Administrator',
       email: 'admin@onlinenotebook.com',
       password: 'admin123',
       phone: '1234567890',
-      collegeId: systemCollege[0].id,
-      departmentId: systemDept[0].id,
-      year: 'N/A',
-      rollNumber: 'ADMIN001',
-      role: 'admin',
-      isApproved: true
+      adminId: 'ADMIN001',
+      role: 'super_admin',
+      permissions: {
+        canManageUsers: true,
+        canManageNotes: true,
+        canManageColleges: true,
+        canManageDepartments: true,
+        canManageSubjects: true,
+        canViewAnalytics: true,
+        canCreateAdmins: true
+      },
+      isActive: true,
+      isApproved: true, // super_admin is auto-approved
+      approvedAt: new Date()
     });
 
     console.log('\n✓ Admin user created successfully!');
@@ -45,6 +42,8 @@ async function createAdmin() {
     console.log('==================');
     console.log('Email: admin@onlinenotebook.com');
     console.log('Password: admin123');
+    console.log('Role: super_admin');
+    console.log('Admin ID: ADMIN001');
     console.log('\n⚠️  IMPORTANT: Please change the password after first login!\n');
 
     process.exit(0);

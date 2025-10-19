@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../models');
-const { protect, authorize } = require('../middleware/auth');
+const { protect, authorize, canApprove } = require('../middleware/auth');
 
 // @route   GET /api/admin/pending-users
 // @desc    Get all pending user approvals
@@ -27,8 +27,8 @@ router.get('/pending-users', protect, authorize('admin'), async (req, res) => {
 
 // @route   PUT /api/admin/approve-user/:id
 // @desc    Approve user registration
-// @access  Private (Admin only)
-router.put('/approve-user/:id', protect, authorize('admin'), async (req, res) => {
+// @access  Private (Super Admin and Admin only)
+router.put('/approve-user/:id', protect, canApprove, async (req, res) => {
   try {
     const user = await db.User.findByPk(req.params.id);
 
@@ -58,8 +58,8 @@ router.put('/approve-user/:id', protect, authorize('admin'), async (req, res) =>
 
 // @route   DELETE /api/admin/reject-user/:id
 // @desc    Reject and delete user registration
-// @access  Private (Admin only)
-router.delete('/reject-user/:id', protect, authorize('admin'), async (req, res) => {
+// @access  Private (Super Admin and Admin only)
+router.delete('/reject-user/:id', protect, canApprove, async (req, res) => {
   try {
     const user = await db.User.findByPk(req.params.id);
 
@@ -109,6 +109,8 @@ router.get('/stats', protect, authorize('admin'), async (req, res) => {
     const totalUsers = await db.User.count();
     const pendingUsers = await db.User.count({ where: { isApproved: false } });
     const approvedUsers = await db.User.count({ where: { isApproved: true } });
+    const totalAdmins = await db.Admin.count();
+    const pendingAdmins = await db.Admin.count({ where: { isApproved: false } });
     const totalNotes = await db.Note.count();
     const totalComments = await db.Comment.count();
     const totalDownloads = await db.Note.sum('downloads');
@@ -118,11 +120,116 @@ router.get('/stats', protect, authorize('admin'), async (req, res) => {
         totalUsers,
         pendingUsers,
         approvedUsers,
+        totalAdmins,
+        pendingAdmins,
         totalNotes,
         totalComments,
         totalDownloads: totalDownloads || 0
       }
     });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// @route   GET /api/admin/pending-admins
+// @desc    Get all pending admin approvals (super_admin only)
+// @access  Private (Super Admin only)
+router.get('/pending-admins', protect, authorize('super_admin'), async (req, res) => {
+  try {
+    const admins = await db.Admin.findAll({
+      where: { 
+        isApproved: false,
+        role: { [db.Sequelize.Op.ne]: 'super_admin' } // Exclude super_admin
+      },
+      attributes: { exclude: ['password'] },
+      include: [
+        { model: db.Admin, as: 'creator', attributes: ['name', 'email', 'adminId'] }
+      ],
+      order: [['createdAt', 'ASC']]
+    });
+
+    res.json({ admins });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// @route   PUT /api/admin/approve-admin/:id
+// @desc    Approve admin registration (super_admin only)
+// @access  Private (Super Admin only)
+router.put('/approve-admin/:id', protect, authorize('super_admin'), async (req, res) => {
+  try {
+    const admin = await db.Admin.findByPk(req.params.id);
+
+    if (!admin) {
+      return res.status(404).json({ message: 'Admin not found' });
+    }
+
+    if (admin.role === 'super_admin') {
+      return res.status(400).json({ message: 'Super admin does not need approval' });
+    }
+
+    await admin.approveAdmin(req.user.id);
+
+    res.json({
+      message: 'Admin approved successfully',
+      admin: {
+        id: admin.id,
+        name: admin.name,
+        email: admin.email,
+        role: admin.role,
+        adminId: admin.adminId,
+        isApproved: admin.isApproved
+      }
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// @route   DELETE /api/admin/reject-admin/:id
+// @desc    Reject and delete admin registration (super_admin only)
+// @access  Private (Super Admin only)
+router.delete('/reject-admin/:id', protect, authorize('super_admin'), async (req, res) => {
+  try {
+    const admin = await db.Admin.findByPk(req.params.id);
+
+    if (!admin) {
+      return res.status(404).json({ message: 'Admin not found' });
+    }
+
+    if (admin.role === 'super_admin') {
+      return res.status(400).json({ message: 'Cannot reject super admin' });
+    }
+
+    await admin.destroy();
+
+    res.json({ message: 'Admin registration rejected and deleted' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// @route   GET /api/admin/admins
+// @desc    Get all admins (super_admin only)
+// @access  Private (Super Admin only)
+router.get('/admins', protect, authorize('super_admin'), async (req, res) => {
+  try {
+    const admins = await db.Admin.findAll({
+      attributes: { exclude: ['password'] },
+      include: [
+        { model: db.Admin, as: 'creator', attributes: ['name', 'email', 'adminId'] },
+        { model: db.Admin, as: 'approver', attributes: ['name', 'email', 'adminId'] }
+      ],
+      order: [['createdAt', 'DESC']]
+    });
+
+    res.json({ admins });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Server error', error: error.message });

@@ -10,8 +10,8 @@ const state = {
 const getters = {
   isAuthenticated: state => !!state.token,
   user: state => state.user,
-  isAdmin: state => state.user?.role === 'admin',
-  isApproved: state => state.user?.isApproved,
+  isAdmin: state => state.user?.role === 'admin' || state.user?.role === 'super_admin' || state.user?.role === 'moderator',
+  isApproved: state => state.user?.isApproved || state.user?.role === 'super_admin',
   loading: state => state.loading,
   error: state => state.error
 };
