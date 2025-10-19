@@ -266,7 +266,7 @@
 
 <script>
 import { ref, onMounted, computed } from 'vue';
-import axios from 'axios';
+import api from '../api/axios';
 import ConfirmationModal from '../components/ConfirmationModal.vue';
 import NotificationToast from '../components/NotificationToast.vue';
 import { useStore } from 'vuex';
@@ -338,7 +338,7 @@ export default {
 
     const fetchStats = async () => {
       try {
-        const response = await axios.get('/api/admin/stats');
+        const response = await api.get('/admin/stats');
         stats.value = response.data.stats;
       } catch (error) {
         console.error('Error fetching stats:', error);
@@ -348,7 +348,7 @@ export default {
     const fetchPendingUsers = async () => {
       try {
         loading.value = true;
-        const response = await axios.get('/api/admin/pending-users');
+        const response = await api.get('/admin/pending-users');
         pendingUsers.value = response.data.users;
         loading.value = false;
       } catch (error) {
@@ -360,7 +360,7 @@ export default {
     const fetchAllUsers = async () => {
       try {
         loading.value = true;
-        const response = await axios.get('/api/admin/users');
+        const response = await api.get('/admin/users');
         allUsers.value = response.data.users;
         loading.value = false;
       } catch (error) {
@@ -391,12 +391,12 @@ export default {
         
         try {
           if (action === 'approve') {
-            await axios.put(`/api/admin/approve-user/${userId}`);
+            await api.put(`/admin/approve-user/${userId}`);
             showToast('Success!', 'User approved successfully!', 'success');
             fetchPendingUsers();
             fetchStats();
           } else if (action === 'reject') {
-            await axios.delete(`/api/admin/reject-user/${userId}`);
+            await api.delete(`/admin/reject-user/${userId}`);
             showToast('Success!', 'User registration rejected', 'success');
             fetchPendingUsers();
             fetchStats();
