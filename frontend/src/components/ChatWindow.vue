@@ -286,9 +286,6 @@ export default {
   watch: {
     messages: {
       handler(newMessages, oldMessages) {
-        console.log('Messages watcher triggered in ChatWindow');
-        console.log('New messages:', newMessages.length);
-        console.log('Old messages:', oldMessages?.length || 0);
         this.$nextTick(() => {
           this.scrollToBottom();
         });
@@ -298,7 +295,6 @@ export default {
     }
   },
   mounted() {
-    console.log('ChatWindow mounted with messages:', this.messages.length);
     this.scrollToBottom();
     this.markMessagesAsRead();
   },
@@ -307,12 +303,6 @@ export default {
       if (!this.newMessage.trim()) return;
       
       const messageContent = this.newMessage.trim();
-      console.log('=== ChatWindow sendMessage START ===');
-      console.log('Message content:', messageContent);
-      console.log('Chat ID:', this.chat.id);
-      console.log('Current user ID:', this.currentUserId);
-      console.log('Messages before send:', this.messages.length);
-      console.log('Store messages before:', this.$store.state.chat.messages.length);
       
       // Add optimistic message immediately
       const optimisticMessage = {
@@ -331,12 +321,7 @@ export default {
         isOptimistic: true
       };
       
-      console.log('Created optimistic message:', optimisticMessage);
-      console.log('Committing to store...');
       this.$store.commit('chat/ADD_MESSAGE', optimisticMessage);
-      
-      console.log('Store messages after commit:', this.$store.state.chat.messages.length);
-      console.log('Component messages after commit:', this.messages.length);
       
       // Clear input immediately
       this.newMessage = '';
@@ -344,14 +329,11 @@ export default {
       this.adjustTextareaHeight();
       
       // Then send via socket
-      console.log('Emitting send-message event...');
       await this.$emit('send-message', {
         chatId: this.chat.id,
         content: messageContent,
         type: 'text'
       });
-      
-      console.log('=== ChatWindow sendMessage END ===');
     },
     
     handleKeyDown(event) {
@@ -387,27 +369,6 @@ export default {
       textarea.style.height = 'auto';
       textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
     },
-    
-    // Test method to add a message immediately
-    testAddMessage() {
-      console.log('Testing immediate message display');
-      const testMessage = {
-        id: `test_${Date.now()}`,
-        content: 'Test message',
-        senderId: this.currentUserId,
-        sender: {
-          id: this.currentUserId,
-          name: 'Test User',
-          email: 'test@test.com',
-          isAdmin: false
-        },
-        createdAt: new Date(),
-        isOptimistic: true
-      };
-      console.log('Adding test message:', testMessage);
-      this.$store.commit('chat/ADD_MESSAGE', testMessage);
-    },
-    
     
     scrollToBottom() {
       const container = this.$refs.messagesContainer;

@@ -33,16 +33,12 @@ const syncOptions = {
 // Environment-specific sync options
 if (process.env.NODE_ENV === 'development') {
   syncOptions.logging = console.log;
-  console.log('🔧 Development mode: Detailed logging enabled');
 } else if (process.env.NODE_ENV === 'production') {
   syncOptions.logging = false;
-  console.log('🚀 Production mode: Logging disabled');
 }
 
 db.sequelize.sync(syncOptions).then(() => {
   console.log('✅ Database synced successfully');
-  console.log('📊 Model changes applied automatically');
-  console.log('🔗 All associations established');
 }).catch(err => {
   console.error('❌ Error syncing database:', err);
   process.exit(1);
@@ -100,8 +96,6 @@ io.use((socket, next) => {
 
 // Socket.io connection handling
 io.on('connection', (socket) => {
-  console.log(`User ${socket.userId} connected with socket ${socket.id}`);
-  
   // Join user to their personal room
   socket.join(`user_${socket.userId}`);
   
@@ -110,27 +104,18 @@ io.on('connection', (socket) => {
   
   // Handle joining chat rooms
   socket.on('join_chat', async (chatId) => {
-    console.log(`=== JOIN CHAT REQUEST ===`);
-    console.log(`User ${socket.userId} requesting to join chat ${chatId}`);
-    
     try {
       // Verify user is participant of this chat
       const participant = await db.ChatParticipant.findOne({
         where: { chatId, userId: socket.userId }
       });
       
-      console.log(`Participant found:`, !!participant);
-      
       if (!participant) {
-        console.log(`Access denied - user ${socket.userId} not participant of chat ${chatId}`);
         socket.emit('error', { message: 'Access denied to this chat' });
         return;
       }
       
       socket.join(`chat_${chatId}`);
-      console.log(`User ${socket.userId} successfully joined chat ${chatId}`);
-      console.log(`Room chat_${chatId} now has ${io.sockets.adapter.rooms.get(`chat_${chatId}`)?.size || 0} users`);
-      console.log(`=== JOIN CHAT SUCCESS ===`);
     } catch (error) {
       console.error('Error joining chat:', error);
       socket.emit('error', { message: 'Failed to join chat' });
@@ -140,13 +125,11 @@ io.on('connection', (socket) => {
   // Handle leaving chat rooms
   socket.on('leave_chat', (chatId) => {
     socket.leave(`chat_${chatId}`);
-    console.log(`User ${socket.userId} left chat ${chatId}`);
   });
   
   // Handle sending messages
   socket.on('send_message', async (data) => {
     try {
-      console.log('Received message via socket:', data);
       const { chatId, content, type = 'text', replyTo } = data;
       
       // Verify user is participant of this chat
@@ -211,8 +194,6 @@ io.on('connection', (socket) => {
       };
       
       // Emit to all users in the chat
-      console.log('Emitting new_message to chat:', chatId, 'message:', messageWithSender);
-      console.log(`Room chat_${chatId} has ${io.sockets.adapter.rooms.get(`chat_${chatId}`)?.size || 0} users`);
       io.to(`chat_${chatId}`).emit('new_message', messageWithSender);
       
     } catch (error) {
@@ -379,7 +360,6 @@ io.on('connection', (socket) => {
   
   // Handle disconnection
   socket.on('disconnect', () => {
-    console.log(`User ${socket.userId} disconnected`);
     updateOnlineStatus(socket.userId, 'offline');
   });
 });

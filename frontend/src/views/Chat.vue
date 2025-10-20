@@ -361,23 +361,17 @@ export default {
     // Auto-select first chat when chats are loaded
     chats: {
       handler(newChats) {
-        console.log('Chats watcher triggered - newChats length:', newChats.length, 'currentChat:', this.currentChat);
         this.autoSelectFirstChat();
       },
       immediate: false
     }
   },
   async mounted() {
-    console.log('Chat component mounted');
-    
     // Clear any existing chat state
     this.$store.commit('chat/SET_CURRENT_CHAT', null);
     this.$store.commit('chat/SET_MESSAGES', []);
     
-    console.log('Fetching chats...');
     const fetchedChats = await this.fetchChats();
-    console.log('Chats after fetch:', fetchedChats.length);
-    console.log('Store chats:', this.chats.length);
     
     await this.fetchChatRequests();
     await this.loadAllUsers();
@@ -385,7 +379,6 @@ export default {
     
     // Auto-select the first available chat if no chat is currently selected
     if (fetchedChats.length > 0) {
-      console.log('Auto-selecting first chat from fetched data:', fetchedChats[0]);
       this.selectChat(fetchedChats[0]);
     } else {
       // Use the store data as fallback
@@ -393,13 +386,11 @@ export default {
       
       // Use nextTick to ensure the DOM is updated and chats are properly set
       this.$nextTick(() => {
-        console.log('NextTick - Checking for auto-select - chats length:', this.chats.length, 'currentChat:', this.currentChat);
         this.autoSelectFirstChat();
       });
       
       // Fallback: Try again after a short delay to handle any race conditions
       setTimeout(() => {
-        console.log('Timeout fallback - Checking for auto-select - chats length:', this.chats.length, 'currentChat:', this.currentChat);
         this.autoSelectFirstChat();
       }, 1000);
     }
@@ -422,17 +413,13 @@ export default {
     ]),
     
     autoSelectFirstChat() {
-      console.log('Auto-select method - chats length:', this.chats.length, 'currentChat:', this.currentChat);
       if (this.chats.length > 0 && !this.currentChat) {
-        console.log('Auto-selecting first chat:', this.chats[0]);
         this.selectChat(this.chats[0]);
       }
     },
     
     async selectChat(chat) {
       if (this.currentChat?.id === chat.id) return;
-      
-      console.log('Selecting chat:', chat.id);
       
       if (this.currentChat) {
         this.leaveChat(this.currentChat.id);
@@ -441,8 +428,6 @@ export default {
       this.$store.commit('chat/SET_CURRENT_CHAT', chat);
       await this.fetchMessages({ chatId: chat.id });
       this.joinChat(chat.id);
-      
-      console.log('Chat selected and messages fetched');
     },
     
     getChatDisplayName(chat) {
@@ -490,27 +475,12 @@ export default {
     async loadAllUsers() {
       this.loadingUsers = true;
       try {
-        console.log('=== LOADING USERS DEBUG ===');
-        console.log('Current user:', this.$store.state.auth.user);
-        console.log('Auth token exists:', !!localStorage.getItem('token'));
-        
         const response = await this.$store.dispatch('auth/getAllUsers');
-        console.log('Raw API response:', response);
-        console.log('Response type:', typeof response);
-        console.log('Is array:', Array.isArray(response));
         
         // Ensure response is always an array
         this.allUsers = Array.isArray(response) ? response : [];
-        console.log('Final allUsers array:', this.allUsers);
-        console.log('AllUsers length:', this.allUsers.length);
-        console.log('=== END LOADING USERS DEBUG ===');
       } catch (error) {
-        console.error('=== ERROR LOADING USERS ===');
-        console.error('Error object:', error);
-        console.error('Error message:', error.message);
-        console.error('Error response:', error.response);
-        console.error('Error status:', error.response?.status);
-        console.error('Error data:', error.response?.data);
+        console.error('Error loading users:', error);
         this.allUsers = [];
       } finally {
         this.loadingUsers = false;

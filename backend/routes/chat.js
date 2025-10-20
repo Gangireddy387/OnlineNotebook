@@ -648,23 +648,16 @@ function deduplicateConversations(chats) {
 // Admin route - Get all chats (for monitoring)
 router.get('/admin/all', protect, async (req, res) => {
   try {
-    console.log('Admin route: User type:', req.userType);
-    console.log('Admin route: User role:', req.user.role);
-    console.log('Admin route: User ID:', req.user.id);
-    
     // Check if user is admin or super_admin
     if (req.userType !== 'admin') {
-      console.log('Admin route: Access denied - not admin user type');
       return res.status(403).json({ message: 'Access denied - admin access required' });
     }
-    
+
     // Additional check for super_admin role
     if (req.user.role !== 'admin' && req.user.role !== 'super_admin' && req.user.role !== 'moderator') {
-      console.log('Admin route: Access denied - insufficient role:', req.user.role);
       return res.status(403).json({ message: 'Access denied - insufficient permissions' });
     }
     
-    console.log('Admin route: Fetching chats from database...');
     const chats = await db.Chat.findAll({
       include: [
         {
@@ -696,11 +689,8 @@ router.get('/admin/all', protect, async (req, res) => {
       ]
     });
     
-    console.log('Admin route: Found chats:', chats.length);
-    
     // Deduplicate conversations by participant pairs
     const deduplicatedChats = deduplicateConversations(chats);
-    console.log('Admin route: Deduplicated chats:', deduplicatedChats.length);
     
     res.json(deduplicatedChats);
   } catch (error) {
