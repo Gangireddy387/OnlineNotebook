@@ -7,19 +7,13 @@ module.exports = (sequelize, DataTypes) => {
     },
     requesterId: {
       type: DataTypes.UUID,
-      allowNull: false,
-      references: {
-        model: 'Users',
-        key: 'id'
-      }
+      allowNull: false
+      // Removed foreign key constraint to support both Users and Admins
     },
     receiverId: {
       type: DataTypes.UUID,
-      allowNull: false,
-      references: {
-        model: 'Users',
-        key: 'id'
-      }
+      allowNull: false
+      // Removed foreign key constraint to support both Users and Admins
     },
     status: {
       type: DataTypes.ENUM('pending', 'accepted', 'declined'),
@@ -34,7 +28,18 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: true
     }
   }, {
-    timestamps: true
+    timestamps: true,
+    indexes: [
+      {
+        fields: ['requesterId']
+      },
+      {
+        fields: ['receiverId']
+      },
+      {
+        fields: ['status']
+      }
+    ]
   });
 
   return ChatRequest;

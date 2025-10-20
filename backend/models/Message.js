@@ -15,11 +15,8 @@ module.exports = (sequelize, DataTypes) => {
     },
     senderId: {
       type: DataTypes.UUID,
-      allowNull: false,
-      references: {
-        model: 'Users',
-        key: 'id'
-      }
+      allowNull: false
+      // Removed foreign key constraint to support both Users and Admins
     },
     content: {
       type: DataTypes.TEXT,

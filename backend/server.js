@@ -110,19 +110,27 @@ io.on('connection', (socket) => {
   
   // Handle joining chat rooms
   socket.on('join_chat', async (chatId) => {
+    console.log(`=== JOIN CHAT REQUEST ===`);
+    console.log(`User ${socket.userId} requesting to join chat ${chatId}`);
+    
     try {
       // Verify user is participant of this chat
       const participant = await db.ChatParticipant.findOne({
         where: { chatId, userId: socket.userId }
       });
       
+      console.log(`Participant found:`, !!participant);
+      
       if (!participant) {
+        console.log(`Access denied - user ${socket.userId} not participant of chat ${chatId}`);
         socket.emit('error', { message: 'Access denied to this chat' });
         return;
       }
       
       socket.join(`chat_${chatId}`);
-      console.log(`User ${socket.userId} joined chat ${chatId}`);
+      console.log(`User ${socket.userId} successfully joined chat ${chatId}`);
+      console.log(`Room chat_${chatId} now has ${io.sockets.adapter.rooms.get(`chat_${chatId}`)?.size || 0} users`);
+      console.log(`=== JOIN CHAT SUCCESS ===`);
     } catch (error) {
       console.error('Error joining chat:', error);
       socket.emit('error', { message: 'Failed to join chat' });
@@ -138,6 +146,7 @@ io.on('connection', (socket) => {
   // Handle sending messages
   socket.on('send_message', async (data) => {
     try {
+      console.log('Received message via socket:', data);
       const { chatId, content, type = 'text', replyTo } = data;
       
       // Verify user is participant of this chat
@@ -165,15 +174,45 @@ io.on('connection', (socket) => {
         { where: { id: chatId } }
       );
       
-      // Fetch message with sender info
-      const messageWithSender = await db.Message.findByPk(message.id, {
-        include: [
-          { model: db.User, as: 'sender', attributes: ['id', 'name', 'email'] },
-          { model: db.Message, as: 'replyToMessage', include: [{ model: db.User, as: 'sender', attributes: ['id', 'name'] }] }
-        ]
-      });
+      // Fetch message with sender info using manual lookup
+      let sender = null;
+      const userSender = await db.User.findByPk(socket.userId, { attributes: ['id', 'name', 'email'] });
+      if (userSender) {
+        sender = { id: userSender.id, name: userSender.name, email: userSender.email, isAdmin: false };
+      } else {
+        const adminSender = await db.Admin.findByPk(socket.userId, { attributes: ['id', 'name', 'email', 'role'] });
+        if (adminSender) {
+          sender = { id: adminSender.id, name: adminSender.name, email: adminSender.email, isAdmin: true, role: adminSender.role };
+        }
+      }
+      
+      let replyToMessage = null;
+      if (replyTo) {
+        replyToMessage = await db.Message.findByPk(replyTo, { attributes: ['id', 'content', 'senderId'] });
+        if (replyToMessage) {
+          let replySender = null;
+          const userReplySender = await db.User.findByPk(replyToMessage.senderId, { attributes: ['id', 'name'] });
+          if (userReplySender) {
+            replySender = { id: userReplySender.id, name: userReplySender.name, isAdmin: false };
+          } else {
+            const adminReplySender = await db.Admin.findByPk(replyToMessage.senderId, { attributes: ['id', 'name'] });
+            if (adminReplySender) {
+              replySender = { id: adminReplySender.id, name: adminReplySender.name, isAdmin: true };
+            }
+          }
+          replyToMessage = { ...replyToMessage.toJSON(), sender: replySender || { id: replyToMessage.senderId, name: 'Unknown User', isAdmin: false } };
+        }
+      }
+      
+      const messageWithSender = {
+        ...message.toJSON(),
+        sender: sender || { id: socket.userId, name: 'Unknown User', email: 'No email', isAdmin: false },
+        replyToMessage
+      };
       
       // Emit to all users in the chat
+      console.log('Emitting new_message to chat:', chatId, 'message:', messageWithSender);
+      console.log(`Room chat_${chatId} has ${io.sockets.adapter.rooms.get(`chat_${chatId}`)?.size || 0} users`);
       io.to(`chat_${chatId}`).emit('new_message', messageWithSender);
       
     } catch (error) {
@@ -255,9 +294,22 @@ io.on('connection', (socket) => {
         message
       });
       
-      const requestWithRequester = await db.ChatRequest.findByPk(chatRequest.id, {
-        include: [{ model: db.User, as: 'requester', attributes: ['id', 'name', 'email'] }]
-      });
+      // Fetch requester details manually
+      let requester = null;
+      const userRequester = await db.User.findByPk(socket.userId, { attributes: ['id', 'name', 'email'] });
+      if (userRequester) {
+        requester = { id: userRequester.id, name: userRequester.name, email: userRequester.email, isAdmin: false };
+      } else {
+        const adminRequester = await db.Admin.findByPk(socket.userId, { attributes: ['id', 'name', 'email', 'role'] });
+        if (adminRequester) {
+          requester = { id: adminRequester.id, name: adminRequester.name, email: adminRequester.email, isAdmin: true, role: adminRequester.role };
+        }
+      }
+      
+      const requestWithRequester = {
+        ...chatRequest.toJSON(),
+        requester: requester || { id: socket.userId, name: 'Unknown User', email: 'No email', isAdmin: false }
+      };
       
       // Emit to receiver
       io.to(`user_${receiverId}`).emit('chat_request_received', requestWithRequester);
@@ -273,9 +325,7 @@ io.on('connection', (socket) => {
     try {
       const { requestId, status } = data;
       
-      const chatRequest = await db.ChatRequest.findByPk(requestId, {
-        include: ['requester', 'receiver']
-      });
+      const chatRequest = await db.ChatRequest.findByPk(requestId);
       
       if (!chatRequest) {
         return socket.emit('error', { message: 'Chat request not found' });
@@ -286,11 +336,23 @@ io.on('connection', (socket) => {
         respondedAt: new Date()
       });
       
+      // Fetch receiver details manually
+      let receiver = null;
+      const userReceiver = await db.User.findByPk(chatRequest.receiverId, { attributes: ['id', 'name', 'email'] });
+      if (userReceiver) {
+        receiver = { id: userReceiver.id, name: userReceiver.name, email: userReceiver.email, isAdmin: false };
+      } else {
+        const adminReceiver = await db.Admin.findByPk(chatRequest.receiverId, { attributes: ['id', 'name', 'email', 'role'] });
+        if (adminReceiver) {
+          receiver = { id: adminReceiver.id, name: adminReceiver.name, email: adminReceiver.email, isAdmin: true, role: adminReceiver.role };
+        }
+      }
+      
       // Notify requester
       io.to(`user_${chatRequest.requesterId}`).emit('chat_request_responded', {
         requestId,
         status,
-        receiver: chatRequest.receiver
+        receiver: receiver || { id: chatRequest.receiverId, name: 'Unknown User', email: 'No email', isAdmin: false }
       });
       
       // If accepted, create chat and add participants

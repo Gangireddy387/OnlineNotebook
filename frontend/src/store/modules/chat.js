@@ -33,7 +33,30 @@ const mutations = {
     state.messages = messages;
   },
   ADD_MESSAGE(state, message) {
+    console.log('ADD_MESSAGE mutation called with:', message);
+    console.log('Current messages before push:', state.messages.length);
     state.messages.push(message);
+    console.log('Messages array after push:', state.messages.length);
+    console.log('All messages:', state.messages);
+  },
+  REPLACE_MESSAGE(state, { index, message }) {
+    state.messages.splice(index, 1, message);
+  },
+  REMOVE_LAST_MESSAGE(state) {
+    if (state.messages.length > 0) {
+      state.messages.pop();
+    }
+  },
+  REMOVE_MESSAGE_BY_ID(state, messageId) {
+    const index = state.messages.findIndex(m => m.id === messageId);
+    if (index !== -1) {
+      state.messages.splice(index, 1);
+    }
+  },
+  REMOVE_MESSAGE_BY_INDEX(state, index) {
+    if (index >= 0 && index < state.messages.length) {
+      state.messages.splice(index, 1);
+    }
   },
   SET_CHAT_REQUESTS(state, requests) {
     state.chatRequests = requests;
@@ -108,26 +131,82 @@ const actions = {
   // Initialize socket connection
   async initializeSocket({ commit, rootState }) {
     const token = localStorage.getItem('token');
-    if (!token) return;
+    console.log('Initializing socket with token:', !!token);
+    
+    if (!token) {
+      console.error('No token found for socket connection');
+      return;
+    }
 
-    const socket = io(process.env.VUE_APP_API_URL || 'http://localhost:5000', {
+    const socketUrl = process.env.NODE_ENV === 'production' ? '' : 'http://localhost:5000';
+    console.log('Connecting to socket:', socketUrl);
+    
+    const socket = io(socketUrl, {
       auth: { token }
     });
 
     socket.on('connect', () => {
+      console.log('=== SOCKET CONNECTED ===');
+      console.log('Socket ID:', socket.id);
+      console.log('Connection status set to true');
       commit('SET_CONNECTION_STATUS', true);
-      console.log('Connected to chat server');
+      console.log('=== SOCKET CONNECTED END ===');
     });
 
     socket.on('disconnect', () => {
+      console.log('=== SOCKET DISCONNECTED ===');
+      console.log('Connection status set to false');
       commit('SET_CONNECTION_STATUS', false);
-      console.log('Disconnected from chat server');
+      console.log('=== SOCKET DISCONNECTED END ===');
+    });
+
+    socket.on('connect_error', (error) => {
+      console.error('Socket connection error:', error);
+    });
+
+    socket.on('error', (error) => {
+      console.error('Socket error:', error);
+      // Handle message sending errors
+      if (error.message && error.message.includes('send')) {
+        // Remove the last optimistic message if it exists
+        const lastMessage = state.messages[state.messages.length - 1];
+        if (lastMessage && lastMessage.isOptimistic) {
+          commit('REMOVE_LAST_MESSAGE');
+        }
+      }
     });
 
     socket.on('new_message', (message) => {
+      console.log('New message received:', message);
+      console.log('Current chat ID:', state.currentChat?.id);
+      console.log('Message chat ID:', message.chatId);
+      
       // Only add message to current chat if it matches the current chat ID
       if (state.currentChat && message.chatId === state.currentChat.id) {
+        console.log('Adding message to current chat');
+        
+        // Check if this message replaces an optimistic message
+        console.log('Looking for optimistic message to replace...');
+        console.log('Current messages:', state.messages.map(m => ({ id: m.id, content: m.content, isOptimistic: m.isOptimistic, senderId: m.senderId })));
+        console.log('Incoming message:', { id: message.id, content: message.content, senderId: message.senderId });
+        
+        // Remove all optimistic messages from the same sender
+        const optimisticMessages = state.messages.filter(m => m.isOptimistic && m.senderId === message.senderId);
+        console.log('Optimistic messages from sender:', optimisticMessages);
+        
+        if (optimisticMessages.length > 0) {
+          // Remove all optimistic messages from this sender
+          for (let i = state.messages.length - 1; i >= 0; i--) {
+            if (state.messages[i].isOptimistic && state.messages[i].senderId === message.senderId) {
+              console.log('Removing optimistic message at index:', i);
+              commit('REMOVE_MESSAGE_BY_INDEX', i);
+            }
+          }
+        }
+        
+        // Add the real message
         commit('ADD_MESSAGE', message);
+        console.log('Added real message');
       }
       // Update the chat list with the last message
       commit('UPDATE_CHAT_LAST_MESSAGE', { chatId: message.chatId, message });
@@ -175,17 +254,26 @@ const actions = {
   // Fetch user's chats
   async fetchChats({ commit }) {
     try {
+      console.log('Fetching chats...');
       const response = await axios.get('/chat');
+      console.log('Chats fetched:', response.data.length, 'chats');
+      console.log('Chats data:', response.data);
       commit('SET_CHATS', response.data);
+      
+      // Return the chats data so the component can use it
+      return response.data;
     } catch (error) {
       console.error('Error fetching chats:', error);
+      return [];
     }
   },
 
   // Fetch messages for a chat
   async fetchMessages({ commit }, { chatId, page = 1 }) {
     try {
+      console.log('Fetching messages for chat:', chatId);
       const response = await axios.get(`/chat/${chatId}/messages?page=${page}&limit=50`);
+      console.log('Messages fetched:', response.data.length, 'messages');
       commit('SET_MESSAGES', response.data);
     } catch (error) {
       console.error('Error fetching messages:', error);
@@ -193,22 +281,44 @@ const actions = {
   },
 
   // Send message
-  async sendMessage({ state, commit }, { chatId, content, type = 'text', replyTo = null }) {
-    if (!state.socket) return;
+  async sendMessage({ state, commit, rootState }, { chatId, content, type = 'text', replyTo = null }) {
+    console.log('Sending message:', { chatId, content, type, replyTo });
+    console.log('Socket available:', !!state.socket);
+    
+    if (!state.socket) {
+      console.error('No socket connection available');
+      return;
+    }
 
+    // Optimistic message is now created in the component
+    console.log('Sending message via socket - optimistic message should already be added');
+
+    // Send via socket
     state.socket.emit('send_message', {
       chatId,
       content,
       type,
       replyTo
     });
+    
+    console.log('Message sent via socket');
   },
 
   // Join chat room
   joinChat({ state }, chatId) {
+    console.log('=== JOIN CHAT DEBUG ===');
+    console.log('Socket available:', !!state.socket);
+    console.log('Socket connected:', state.isConnected);
+    console.log('Chat ID to join:', chatId);
+    
     if (state.socket) {
+      console.log('Emitting join_chat event...');
       state.socket.emit('join_chat', chatId);
+      console.log('join_chat event emitted');
+    } else {
+      console.error('No socket available for joining chat');
     }
+    console.log('=== JOIN CHAT DEBUG END ===');
   },
 
   // Leave chat room

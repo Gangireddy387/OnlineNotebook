@@ -7,6 +7,8 @@ const { protect } = require('../middleware/auth');
 router.get('/', protect, async (req, res) => {
   try {
     const userId = req.user.id;
+    const userType = req.userType;
+    
     
     const chats = await db.ChatParticipant.findAll({
       where: { userId },
@@ -18,14 +20,12 @@ router.get('/', protect, async (req, res) => {
             {
               model: db.Message,
               as: 'messages',
-              include: [{ model: db.User, as: 'sender', attributes: ['id', 'name'] }],
               order: [['createdAt', 'DESC']],
               limit: 1
             },
             {
               model: db.ChatParticipant,
-              as: 'participants',
-              include: [{ model: db.User, as: 'user', attributes: ['id', 'name', 'email'] }]
+              as: 'participants'
             }
           ]
         }
@@ -33,7 +33,62 @@ router.get('/', protect, async (req, res) => {
       order: [[{ model: db.Chat, as: 'chat' }, 'lastMessageAt', 'DESC']]
     });
     
-    res.json(chats.map(participant => participant.chat));
+    // Process chats to include admin participants
+    const processedChats = await Promise.all(
+      chats.map(async (participant) => {
+        const chat = participant.chat;
+        
+        // Get all participants with their details (both users and admins)
+        const allParticipants = await Promise.all(
+          chat.participants.map(async (p) => {
+            let userDetails = null;
+            
+            // Try to find in Users table first
+            const user = await db.User.findByPk(p.userId, {
+              attributes: ['id', 'name', 'email'],
+              include: [{ model: db.OnlineStatus, as: 'onlineStatus', attributes: ['status', 'lastSeen'] }]
+            });
+            
+            if (user) {
+              userDetails = {
+                id: user.id,
+                name: user.name,
+                email: user.email,
+                isAdmin: false,
+                onlineStatus: user.onlineStatus
+              };
+            } else {
+              // If not found in Users, try Admins table
+              const adminDetails = await db.Admin.findByPk(p.userId, {
+                attributes: ['id', 'name', 'email', 'role']
+              });
+              if (adminDetails) {
+                userDetails = {
+                  id: adminDetails.id,
+                  name: adminDetails.name,
+                  email: adminDetails.email,
+                  isAdmin: true,
+                  role: adminDetails.role,
+                  onlineStatus: null
+                };
+              }
+            }
+            
+            return {
+              ...p.toJSON(),
+              user: userDetails || { id: p.userId, name: 'Unknown User', email: 'No email', isAdmin: false }
+            };
+          })
+        );
+        
+        return {
+          ...chat.toJSON(),
+          participants: allParticipants
+        };
+      })
+    );
+    
+    res.json(processedChats);
   } catch (error) {
     console.error('Error fetching chats:', error);
     res.status(500).json({ message: 'Server error' });
@@ -61,11 +116,9 @@ router.get('/:chatId/messages', protect, async (req, res) => {
     const messages = await db.Message.findAll({
       where: { chatId },
       include: [
-        { model: db.User, as: 'sender', attributes: ['id', 'name', 'email'] },
         { 
           model: db.Message, 
-          as: 'replyToMessage', 
-          include: [{ model: db.User, as: 'sender', attributes: ['id', 'name'] }] 
+          as: 'replyToMessage'
         }
       ],
       order: [['createdAt', 'DESC']],
@@ -73,7 +126,47 @@ router.get('/:chatId/messages', protect, async (req, res) => {
       offset: parseInt(offset)
     });
     
-    res.json(messages.reverse()); // Reverse to show oldest first
+    // Process messages to include admin senders
+    const processedMessages = await Promise.all(
+      messages.map(async (message) => {
+        let sender = null;
+        
+        // Try to find sender in Users table first
+        const userSender = await db.User.findByPk(message.senderId, {
+          attributes: ['id', 'name', 'email']
+        });
+        
+        if (userSender) {
+          sender = {
+            id: userSender.id,
+            name: userSender.name,
+            email: userSender.email,
+            isAdmin: false
+          };
+        } else {
+          // If not found in Users, try Admins table
+          const adminSender = await db.Admin.findByPk(message.senderId, {
+            attributes: ['id', 'name', 'email', 'role']
+          });
+          if (adminSender) {
+            sender = {
+              id: adminSender.id,
+              name: adminSender.name,
+              email: adminSender.email,
+              isAdmin: true,
+              role: adminSender.role
+            };
+          }
+        }
+        
+        return {
+          ...message.toJSON(),
+          sender: sender || { id: message.senderId, name: 'Unknown User', email: 'No email', isAdmin: false }
+        };
+      })
+    );
+    
+    res.json(processedMessages.reverse()); // Reverse to show oldest first
   } catch (error) {
     console.error('Error fetching messages:', error);
     res.status(500).json({ message: 'Server error' });
@@ -96,18 +189,53 @@ router.get('/:chatId/participants', protect, async (req, res) => {
     }
     
     const participants = await db.ChatParticipant.findAll({
-      where: { chatId },
-      include: [
-        { 
-          model: db.User, 
-          as: 'user', 
-          attributes: ['id', 'name', 'email'],
-          include: [{ model: db.OnlineStatus, as: 'onlineStatus' }]
-        }
-      ]
+      where: { chatId }
     });
     
-    res.json(participants);
+    // Process participants to include admin users
+    const processedParticipants = await Promise.all(
+      participants.map(async (participant) => {
+        let userDetails = null;
+        
+        // Try to find in Users table first
+        const user = await db.User.findByPk(participant.userId, {
+          attributes: ['id', 'name', 'email'],
+          include: [{ model: db.OnlineStatus, as: 'onlineStatus', attributes: ['status', 'lastSeen'] }]
+        });
+        
+        if (user) {
+          userDetails = {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            isAdmin: false,
+            onlineStatus: user.onlineStatus
+          };
+        } else {
+          // If not found in Users, try Admins table
+          const adminDetails = await db.Admin.findByPk(participant.userId, {
+            attributes: ['id', 'name', 'email', 'role']
+          });
+          if (adminDetails) {
+            userDetails = {
+              id: adminDetails.id,
+              name: adminDetails.name,
+              email: adminDetails.email,
+              isAdmin: true,
+              role: adminDetails.role,
+              onlineStatus: null // Admins don't have online status in the same way
+            };
+          }
+        }
+        
+        return {
+          ...participant.toJSON(),
+          user: userDetails || { id: participant.userId, name: 'Unknown User', email: 'No email', isAdmin: false }
+        };
+      })
+    );
+    
+    res.json(processedParticipants);
   } catch (error) {
     console.error('Error fetching participants:', error);
     res.status(500).json({ message: 'Server error' });
@@ -124,25 +252,59 @@ router.get('/users/search', protect, async (req, res) => {
       return res.json([]);
     }
     
-    const users = await db.User.findAll({
-      where: {
-        id: { [db.Sequelize.Op.ne]: userId },
-        isApproved: true,
-        [db.Sequelize.Op.or]: [
-          { name: { [db.Sequelize.Op.iLike]: `%${q}%` } },
-          { email: { [db.Sequelize.Op.iLike]: `%${q}%` } }
-        ]
-      },
-      include: [
-        { model: db.College, as: 'college', attributes: ['name'] },
-        { model: db.Department, as: 'department', attributes: ['name'] },
-        { model: db.OnlineStatus, as: 'onlineStatus' }
-      ],
-      attributes: ['id', 'name', 'email', 'year', 'rollNumber'],
-      limit: 20
-    });
+    // Search both regular users and admins
+    const [users, admins] = await Promise.all([
+      // Search regular users
+      db.User.findAll({
+        where: {
+          id: { [db.Sequelize.Op.ne]: userId },
+          isApproved: true,
+          [db.Sequelize.Op.or]: [
+            { name: { [db.Sequelize.Op.iLike]: `%${q}%` } },
+            { email: { [db.Sequelize.Op.iLike]: `%${q}%` } }
+          ]
+        },
+        include: [
+          { model: db.College, as: 'college', attributes: ['name'] },
+          { model: db.Department, as: 'department', attributes: ['name'] },
+          { model: db.OnlineStatus, as: 'onlineStatus' }
+        ],
+        attributes: ['id', 'name', 'email', 'year', 'rollNumber'],
+        limit: 10
+      }),
+      // Search admins (only if current user is not an admin or if searching for other admins)
+      req.userType === 'admin' ? 
+        db.Admin.findAll({
+          where: {
+            id: { [db.Sequelize.Op.ne]: userId },
+            isActive: true,
+            [db.Sequelize.Op.or]: [
+              { name: { [db.Sequelize.Op.iLike]: `%${q}%` } },
+              { email: { [db.Sequelize.Op.iLike]: `%${q}%` } }
+            ]
+          },
+          attributes: ['id', 'name', 'email', 'role', 'adminId'],
+          limit: 10
+        }) : []
+    ]);
     
-    res.json(users);
+    // Format admins to match user structure
+    const formattedAdmins = admins.map(admin => ({
+      id: admin.id,
+      name: admin.name,
+      email: admin.email,
+      year: null,
+      rollNumber: admin.adminId,
+      college: null,
+      department: null,
+      onlineStatus: null,
+      isAdmin: true,
+      role: admin.role
+    }));
+    
+    // Combine and limit results
+    const allResults = [...users, ...formattedAdmins];
+    res.json(allResults.slice(0, 20));
   } catch (error) {
     console.error('Error searching users:', error);
     res.status(500).json({ message: 'Server error' });
@@ -154,6 +316,7 @@ router.post('/request', protect, async (req, res) => {
   try {
     const { receiverId, message } = req.body;
     const requesterId = req.user.id;
+    const requesterType = req.userType; // 'user' or 'admin'
     
     if (requesterId === receiverId) {
       return res.status(400).json({ message: 'Cannot send request to yourself' });
@@ -172,21 +335,47 @@ router.post('/request', protect, async (req, res) => {
       return res.status(400).json({ message: 'Request already sent' });
     }
     
-    // Check if chat already exists
-    const existingChat = await db.ChatParticipant.findOne({
-      where: {
-        userId: requesterId
-      },
-      include: [{
-        model: db.Chat,
-        as: 'chat',
+    // Check if chat already exists between these users
+    // We need to check both User and Admin tables for participants
+    let existingChat = null;
+    
+    if (requesterType === 'admin') {
+      // If requester is admin, check if they have a chat with the receiver
+      const requesterParticipant = await db.ChatParticipant.findOne({
+        where: { userId: requesterId },
         include: [{
-          model: db.ChatParticipant,
-          as: 'participants',
-          where: { userId: receiverId }
+          model: db.Chat,
+          as: 'chat',
+          include: [{
+            model: db.ChatParticipant,
+            as: 'participants',
+            where: { userId: receiverId }
+          }]
         }]
-      }]
-    });
+      });
+      
+      if (requesterParticipant) {
+        existingChat = requesterParticipant.chat;
+      }
+    } else {
+      // If requester is regular user, check if they have a chat with the receiver
+      const requesterParticipant = await db.ChatParticipant.findOne({
+        where: { userId: requesterId },
+        include: [{
+          model: db.Chat,
+          as: 'chat',
+          include: [{
+            model: db.ChatParticipant,
+            as: 'participants',
+            where: { userId: receiverId }
+          }]
+        }]
+      });
+      
+      if (requesterParticipant) {
+        existingChat = requesterParticipant.chat;
+      }
+    }
     
     if (existingChat) {
       return res.status(400).json({ message: 'Chat already exists' });
@@ -198,9 +387,25 @@ router.post('/request', protect, async (req, res) => {
       message
     });
     
-    const requestWithRequester = await db.ChatRequest.findByPk(chatRequest.id, {
-      include: [{ model: db.User, as: 'requester', attributes: ['id', 'name', 'email'] }]
-    });
+    // Get the request with requester details
+    let requestWithRequester;
+    if (requesterType === 'admin') {
+      const admin = await db.Admin.findByPk(requesterId, {
+        attributes: ['id', 'name', 'email']
+      });
+      requestWithRequester = {
+        ...chatRequest.toJSON(),
+        requester: admin || { id: requesterId, name: 'Unknown Admin', email: 'No email' }
+      };
+    } else {
+      const user = await db.User.findByPk(requesterId, {
+        attributes: ['id', 'name', 'email']
+      });
+      requestWithRequester = {
+        ...chatRequest.toJSON(),
+        requester: user || { id: requesterId, name: 'Unknown User', email: 'No email' }
+      };
+    }
     
     res.json(requestWithRequester);
   } catch (error) {
@@ -213,23 +418,87 @@ router.post('/request', protect, async (req, res) => {
 router.get('/requests/all', protect, async (req, res) => {
   try {
     const userId = req.user.id;
+    const userType = req.userType;
     
     const [sentRequests, receivedRequests] = await Promise.all([
       db.ChatRequest.findAll({
         where: { requesterId: userId },
-        include: [{ model: db.User, as: 'receiver', attributes: ['id', 'name', 'email'] }],
         order: [['createdAt', 'DESC']]
       }),
       db.ChatRequest.findAll({
         where: { receiverId: userId },
-        include: [{ model: db.User, as: 'requester', attributes: ['id', 'name', 'email'] }],
         order: [['createdAt', 'DESC']]
       })
     ]);
     
+    // Get requester and receiver details for each request
+    const processedSentRequests = await Promise.all(
+      sentRequests.map(async (request) => {
+        let receiver;
+        if (userType === 'admin') {
+          // If current user is admin, receiver could be user or admin
+          receiver = await db.User.findByPk(request.receiverId, {
+            attributes: ['id', 'name', 'email']
+          });
+          if (!receiver) {
+            receiver = await db.Admin.findByPk(request.receiverId, {
+              attributes: ['id', 'name', 'email']
+            });
+          }
+        } else {
+          // If current user is regular user, receiver could be user or admin
+          receiver = await db.User.findByPk(request.receiverId, {
+            attributes: ['id', 'name', 'email']
+          });
+          if (!receiver) {
+            receiver = await db.Admin.findByPk(request.receiverId, {
+              attributes: ['id', 'name', 'email']
+            });
+          }
+        }
+        
+        return {
+          ...request.toJSON(),
+          receiver: receiver || { id: request.receiverId, name: 'Unknown User', email: 'No email' }
+        };
+      })
+    );
+    
+    const processedReceivedRequests = await Promise.all(
+      receivedRequests.map(async (request) => {
+        let requester;
+        if (userType === 'admin') {
+          // If current user is admin, requester could be user or admin
+          requester = await db.User.findByPk(request.requesterId, {
+            attributes: ['id', 'name', 'email']
+          });
+          if (!requester) {
+            requester = await db.Admin.findByPk(request.requesterId, {
+              attributes: ['id', 'name', 'email']
+            });
+          }
+        } else {
+          // If current user is regular user, requester could be user or admin
+          requester = await db.User.findByPk(request.requesterId, {
+            attributes: ['id', 'name', 'email']
+          });
+          if (!requester) {
+            requester = await db.Admin.findByPk(request.requesterId, {
+              attributes: ['id', 'name', 'email']
+            });
+          }
+        }
+        
+        return {
+          ...request.toJSON(),
+          requester: requester || { id: request.requesterId, name: 'Unknown User', email: 'No email' }
+        };
+      })
+    );
+    
     res.json({
-      sent: sentRequests,
-      received: receivedRequests
+      sent: processedSentRequests,
+      received: processedReceivedRequests
     });
   } catch (error) {
     console.error('Error fetching chat requests:', error);
@@ -243,10 +512,9 @@ router.put('/request/:requestId/respond', protect, async (req, res) => {
     const { requestId } = req.params;
     const { status } = req.body;
     const userId = req.user.id;
+    const userType = req.userType;
     
-    const chatRequest = await db.ChatRequest.findByPk(requestId, {
-      include: ['requester', 'receiver']
-    });
+    const chatRequest = await db.ChatRequest.findByPk(requestId);
     
     if (!chatRequest) {
       return res.status(404).json({ message: 'Chat request not found' });
@@ -276,9 +544,64 @@ router.put('/request/:requestId/respond', protect, async (req, res) => {
         { chatId: chat.id, userId: chatRequest.receiverId }
       ]);
       
-      res.json({ chatRequest, chat });
+      // Get requester details for response
+      let requester;
+      if (userType === 'admin') {
+        requester = await db.User.findByPk(chatRequest.requesterId, {
+          attributes: ['id', 'name', 'email']
+        });
+        if (!requester) {
+          requester = await db.Admin.findByPk(chatRequest.requesterId, {
+            attributes: ['id', 'name', 'email']
+          });
+        }
+      } else {
+        requester = await db.User.findByPk(chatRequest.requesterId, {
+          attributes: ['id', 'name', 'email']
+        });
+        if (!requester) {
+          requester = await db.Admin.findByPk(chatRequest.requesterId, {
+            attributes: ['id', 'name', 'email']
+          });
+        }
+      }
+      
+      res.json({ 
+        chatRequest: {
+          ...chatRequest.toJSON(),
+          requester: requester || { id: chatRequest.requesterId, name: 'Unknown User', email: 'No email' }
+        }, 
+        chat 
+      });
     } else {
-      res.json({ chatRequest });
+      // Get requester details for response
+      let requester;
+      if (userType === 'admin') {
+        requester = await db.User.findByPk(chatRequest.requesterId, {
+          attributes: ['id', 'name', 'email']
+        });
+        if (!requester) {
+          requester = await db.Admin.findByPk(chatRequest.requesterId, {
+            attributes: ['id', 'name', 'email']
+          });
+        }
+      } else {
+        requester = await db.User.findByPk(chatRequest.requesterId, {
+          attributes: ['id', 'name', 'email']
+        });
+        if (!requester) {
+          requester = await db.Admin.findByPk(chatRequest.requesterId, {
+            attributes: ['id', 'name', 'email']
+          });
+        }
+      }
+      
+      res.json({ 
+        chatRequest: {
+          ...chatRequest.toJSON(),
+          requester: requester || { id: chatRequest.requesterId, name: 'Unknown User', email: 'No email' }
+        }
+      });
     }
   } catch (error) {
     console.error('Error responding to chat request:', error);
@@ -347,7 +670,6 @@ router.get('/admin/all', protect, async (req, res) => {
         {
           model: db.Message,
           as: 'messages',
-          include: [{ model: db.User, as: 'sender', attributes: ['id', 'name', 'email'] }],
           order: [['createdAt', 'DESC']],
           limit: 1,
           required: true, // INNER JOIN - only include chats that have actual messages
@@ -360,7 +682,6 @@ router.get('/admin/all', protect, async (req, res) => {
         {
           model: db.ChatParticipant,
           as: 'participants',
-          include: [{ model: db.User, as: 'user', attributes: ['id', 'name', 'email'] }],
           required: true // INNER JOIN to ensure we have participants
         }
       ],
@@ -406,17 +727,92 @@ router.get('/admin/:chatId/messages', protect, async (req, res) => {
     const messages = await db.Message.findAll({
       where: { chatId },
       include: [
-        { model: db.User, as: 'sender', attributes: ['id', 'name', 'email'] },
         { 
           model: db.Message, 
-          as: 'replyToMessage', 
-          include: [{ model: db.User, as: 'sender', attributes: ['id', 'name'] }] 
+          as: 'replyToMessage'
         }
       ],
       order: [['createdAt', 'ASC']]
     });
     
-    res.json(messages);
+    // Process messages to include admin senders
+    const processedMessages = await Promise.all(
+      messages.map(async (message) => {
+        let sender = null;
+        
+        // Try to find sender in Users table first
+        const userSender = await db.User.findByPk(message.senderId, {
+          attributes: ['id', 'name', 'email']
+        });
+        
+        if (userSender) {
+          sender = {
+            id: userSender.id,
+            name: userSender.name,
+            email: userSender.email,
+            isAdmin: false
+          };
+        } else {
+          // If not found in Users, try Admins table
+          const adminSender = await db.Admin.findByPk(message.senderId, {
+            attributes: ['id', 'name', 'email', 'role']
+          });
+          if (adminSender) {
+            sender = {
+              id: adminSender.id,
+              name: adminSender.name,
+              email: adminSender.email,
+              isAdmin: true,
+              role: adminSender.role
+            };
+          }
+        }
+        
+        // Process replyToMessage sender if it exists
+        let replyToMessage = message.replyToMessage;
+        if (replyToMessage) {
+          let replySender = null;
+          
+          // Try to find reply sender in Users table first
+          const userReplySender = await db.User.findByPk(replyToMessage.senderId, {
+            attributes: ['id', 'name']
+          });
+          
+          if (userReplySender) {
+            replySender = {
+              id: userReplySender.id,
+              name: userReplySender.name,
+              isAdmin: false
+            };
+          } else {
+            // If not found in Users, try Admins table
+            const adminReplySender = await db.Admin.findByPk(replyToMessage.senderId, {
+              attributes: ['id', 'name']
+            });
+            if (adminReplySender) {
+              replySender = {
+                id: adminReplySender.id,
+                name: adminReplySender.name,
+                isAdmin: true
+              };
+            }
+          }
+          
+          replyToMessage = {
+            ...replyToMessage.toJSON(),
+            sender: replySender || { id: replyToMessage.senderId, name: 'Unknown User', isAdmin: false }
+          };
+        }
+        
+        return {
+          ...message.toJSON(),
+          sender: sender || { id: message.senderId, name: 'Unknown User', email: 'No email', isAdmin: false },
+          replyToMessage
+        };
+      })
+    );
+    
+    res.json(processedMessages);
   } catch (error) {
     console.error('Error fetching admin messages:', error);
     res.status(500).json({ message: 'Server error' });

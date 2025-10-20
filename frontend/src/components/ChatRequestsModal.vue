@@ -62,11 +62,11 @@
             >
               <div class="flex items-start space-x-3">
                 <div class="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center text-white font-semibold">
-                  {{ request.requester.name.charAt(0).toUpperCase() }}
+                  {{ request.requester?.name?.charAt(0)?.toUpperCase() || '?' }}
                 </div>
                 <div class="flex-1 min-w-0">
-                  <h4 class="font-medium text-gray-900">{{ request.requester.name }}</h4>
-                  <p class="text-sm text-gray-500">{{ request.requester.email }}</p>
+                  <h4 class="font-medium text-gray-900">{{ request.requester?.name || 'Unknown User' }}</h4>
+                  <p class="text-sm text-gray-500">{{ request.requester?.email || 'No email' }}</p>
                   <p v-if="request.message" class="text-sm text-gray-700 mt-2 italic">
                     "{{ request.message }}"
                   </p>
@@ -120,11 +120,11 @@
             >
               <div class="flex items-start space-x-3">
                 <div class="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center text-white font-semibold">
-                  {{ request.receiver.name.charAt(0).toUpperCase() }}
+                  {{ request.receiver?.name?.charAt(0)?.toUpperCase() || '?' }}
                 </div>
                 <div class="flex-1 min-w-0">
-                  <h4 class="font-medium text-gray-900">{{ request.receiver.name }}</h4>
-                  <p class="text-sm text-gray-500">{{ request.receiver.email }}</p>
+                  <h4 class="font-medium text-gray-900">{{ request.receiver?.name || 'Unknown User' }}</h4>
+                  <p class="text-sm text-gray-500">{{ request.receiver?.email || 'No email' }}</p>
                   <p v-if="request.message" class="text-sm text-gray-700 mt-2 italic">
                     "{{ request.message }}"
                   </p>

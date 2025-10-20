@@ -105,13 +105,19 @@
                   <div class="absolute -bottom-0.5 -right-0.5 md:-bottom-1 md:-right-1 w-3 h-3 md:w-4 md:h-4 rounded-full border-2 border-white bg-green-500"></div>
                 </div>
                 <div class="flex-1 min-w-0">
-                  <h3 class="font-medium text-gray-900 truncate text-sm md:text-base">{{ user.name }}</h3>
+                  <h3 class="font-medium text-gray-900 truncate text-sm md:text-base">
+                    {{ user.name }}
+                    <span v-if="user.isAdmin" class="ml-1 text-xs bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded-full">
+                      {{ user.role }}
+                    </span>
+                  </h3>
                   <p class="text-xs md:text-sm text-gray-500 truncate">{{ user.email }}</p>
                   <p class="text-xs text-green-600">Online</p>
                 </div>
                 <div class="flex flex-col items-end hidden md:flex">
-                  <span class="text-xs text-gray-400">{{ user.college?.name }}</span>
-                  <span class="text-xs text-gray-400">{{ user.department?.name }}</span>
+                  <span v-if="user.isAdmin" class="text-xs text-blue-600 font-medium">Admin</span>
+                  <span v-else class="text-xs text-gray-400">{{ user.college?.name }}</span>
+                  <span v-if="!user.isAdmin" class="text-xs text-gray-400">{{ user.department?.name }}</span>
                 </div>
               </div>
             </div>
@@ -135,13 +141,19 @@
                   <div class="absolute -bottom-0.5 -right-0.5 md:-bottom-1 md:-right-1 w-3 h-3 md:w-4 md:h-4 rounded-full border-2 border-white bg-gray-400"></div>
                 </div>
                 <div class="flex-1 min-w-0">
-                  <h3 class="font-medium text-gray-900 truncate text-sm md:text-base">{{ user.name }}</h3>
+                  <h3 class="font-medium text-gray-900 truncate text-sm md:text-base">
+                    {{ user.name }}
+                    <span v-if="user.isAdmin" class="ml-1 text-xs bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded-full">
+                      {{ user.role }}
+                    </span>
+                  </h3>
                   <p class="text-xs md:text-sm text-gray-500 truncate">{{ user.email }}</p>
                   <p class="text-xs text-gray-500">Offline</p>
                 </div>
                 <div class="flex flex-col items-end hidden md:flex">
-                  <span class="text-xs text-gray-400">{{ user.college?.name }}</span>
-                  <span class="text-xs text-gray-400">{{ user.department?.name }}</span>
+                  <span v-if="user.isAdmin" class="text-xs text-blue-600 font-medium">Admin</span>
+                  <span v-else class="text-xs text-gray-400">{{ user.college?.name }}</span>
+                  <span v-if="!user.isAdmin" class="text-xs text-gray-400">{{ user.department?.name }}</span>
                 </div>
               </div>
             </div>
@@ -203,7 +215,12 @@
               ></div>
             </div>
             <div>
-              <h3 class="text-lg md:text-xl font-semibold text-gray-900">{{ selectedUser.name }}</h3>
+              <h3 class="text-lg md:text-xl font-semibold text-gray-900">
+                {{ selectedUser.name }}
+                <span v-if="selectedUser.isAdmin" class="ml-2 text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                  {{ selectedUser.role }}
+                </span>
+              </h3>
               <p class="text-sm md:text-base text-gray-600">{{ selectedUser.email }}</p>
               <p class="text-xs md:text-sm" :class="getOnlineStatus(selectedUser.id).status === 'online' ? 'text-green-600' : 'text-gray-500'">
                 {{ getOnlineStatus(selectedUser.id).status === 'online' ? 'Online' : 'Offline' }}
@@ -215,21 +232,31 @@
         <!-- User Details -->
         <div class="p-4 md:p-6 space-y-4">
           <div class="bg-white rounded-lg p-3 md:p-4">
-            <h4 class="font-semibold text-gray-900 mb-3 text-sm md:text-base">User Information</h4>
+            <h4 class="font-semibold text-gray-900 mb-3 text-sm md:text-base">
+              {{ selectedUser.isAdmin ? 'Admin Information' : 'User Information' }}
+            </h4>
             <div class="space-y-2">
-              <div class="flex justify-between text-sm md:text-base">
+              <div v-if="selectedUser.isAdmin" class="flex justify-between text-sm md:text-base">
+                <span class="text-gray-600">Role:</span>
+                <span class="font-medium">{{ selectedUser.role }}</span>
+              </div>
+              <div v-if="selectedUser.isAdmin" class="flex justify-between text-sm md:text-base">
+                <span class="text-gray-600">Admin ID:</span>
+                <span class="font-medium">{{ selectedUser.rollNumber || 'N/A' }}</span>
+              </div>
+              <div v-if="!selectedUser.isAdmin" class="flex justify-between text-sm md:text-base">
                 <span class="text-gray-600">College:</span>
                 <span class="font-medium">{{ selectedUser.college?.name || 'N/A' }}</span>
               </div>
-              <div class="flex justify-between text-sm md:text-base">
+              <div v-if="!selectedUser.isAdmin" class="flex justify-between text-sm md:text-base">
                 <span class="text-gray-600">Department:</span>
                 <span class="font-medium">{{ selectedUser.department?.name || 'N/A' }}</span>
               </div>
-              <div class="flex justify-between text-sm md:text-base">
+              <div v-if="!selectedUser.isAdmin" class="flex justify-between text-sm md:text-base">
                 <span class="text-gray-600">Year:</span>
                 <span class="font-medium">{{ selectedUser.year || 'N/A' }}</span>
               </div>
-              <div class="flex justify-between text-sm md:text-base">
+              <div v-if="!selectedUser.isAdmin" class="flex justify-between text-sm md:text-base">
                 <span class="text-gray-600">Roll Number:</span>
                 <span class="font-medium">{{ selectedUser.rollNumber || 'N/A' }}</span>
               </div>
@@ -301,6 +328,7 @@ export default {
     ...mapState('chat', ['chats', 'currentChat', 'messages', 'isConnected']),
     ...mapGetters('chat', ['getOnlineStatus', 'getTypingUsers', 'unreadChatRequests']),
     
+    
     filteredUsers() {
       if (!Array.isArray(this.allUsers)) return [];
       if (!this.searchQuery) return this.allUsers;
@@ -329,15 +357,52 @@ export default {
       });
     }
   },
+  watch: {
+    // Auto-select first chat when chats are loaded
+    chats: {
+      handler(newChats) {
+        console.log('Chats watcher triggered - newChats length:', newChats.length, 'currentChat:', this.currentChat);
+        this.autoSelectFirstChat();
+      },
+      immediate: false
+    }
+  },
   async mounted() {
+    console.log('Chat component mounted');
+    
     // Clear any existing chat state
     this.$store.commit('chat/SET_CURRENT_CHAT', null);
     this.$store.commit('chat/SET_MESSAGES', []);
     
-    await this.fetchChats();
+    console.log('Fetching chats...');
+    const fetchedChats = await this.fetchChats();
+    console.log('Chats after fetch:', fetchedChats.length);
+    console.log('Store chats:', this.chats.length);
+    
     await this.fetchChatRequests();
     await this.loadAllUsers();
     await this.initializeSocket();
+    
+    // Auto-select the first available chat if no chat is currently selected
+    if (fetchedChats.length > 0) {
+      console.log('Auto-selecting first chat from fetched data:', fetchedChats[0]);
+      this.selectChat(fetchedChats[0]);
+    } else {
+      // Use the store data as fallback
+      this.autoSelectFirstChat();
+      
+      // Use nextTick to ensure the DOM is updated and chats are properly set
+      this.$nextTick(() => {
+        console.log('NextTick - Checking for auto-select - chats length:', this.chats.length, 'currentChat:', this.currentChat);
+        this.autoSelectFirstChat();
+      });
+      
+      // Fallback: Try again after a short delay to handle any race conditions
+      setTimeout(() => {
+        console.log('Timeout fallback - Checking for auto-select - chats length:', this.chats.length, 'currentChat:', this.currentChat);
+        this.autoSelectFirstChat();
+      }, 1000);
+    }
   },
   beforeUnmount() {
     this.disconnectSocket();
@@ -356,8 +421,18 @@ export default {
       'leaveChat'
     ]),
     
+    autoSelectFirstChat() {
+      console.log('Auto-select method - chats length:', this.chats.length, 'currentChat:', this.currentChat);
+      if (this.chats.length > 0 && !this.currentChat) {
+        console.log('Auto-selecting first chat:', this.chats[0]);
+        this.selectChat(this.chats[0]);
+      }
+    },
+    
     async selectChat(chat) {
       if (this.currentChat?.id === chat.id) return;
+      
+      console.log('Selecting chat:', chat.id);
       
       if (this.currentChat) {
         this.leaveChat(this.currentChat.id);
@@ -366,6 +441,8 @@ export default {
       this.$store.commit('chat/SET_CURRENT_CHAT', chat);
       await this.fetchMessages({ chatId: chat.id });
       this.joinChat(chat.id);
+      
+      console.log('Chat selected and messages fetched');
     },
     
     getChatDisplayName(chat) {
@@ -380,7 +457,7 @@ export default {
     getOtherParticipant(chat) {
       if (!chat.participants) return null;
       const currentUserId = this.$store.state.auth.user?.id;
-      return chat.participants.find(p => p.user.id !== currentUserId)?.user;
+      return chat.participants.find(p => p.user?.id !== currentUserId)?.user;
     },
     
     formatTime(timestamp) {
@@ -453,8 +530,8 @@ export default {
       // Check if chat already exists with this user
       const existingChat = this.chats.find(chat => {
         if (!chat.participants || chat.participants.length !== 2) return false;
-        const otherParticipant = chat.participants.find(p => p.user.id !== this.$store.state.auth.user?.id);
-        return otherParticipant?.user.id === user.id;
+        const otherParticipant = chat.participants.find(p => p.user?.id !== this.$store.state.auth.user?.id);
+        return otherParticipant?.user?.id === user.id;
       });
       
       if (existingChat) {
@@ -473,8 +550,8 @@ export default {
       // Check if chat already exists with this user
       const existingChat = this.chats.find(chat => {
         if (!chat.participants || chat.participants.length !== 2) return false;
-        const otherParticipant = chat.participants.find(p => p.user.id !== this.$store.state.auth.user?.id);
-        return otherParticipant?.user.id === this.selectedUser.id;
+        const otherParticipant = chat.participants.find(p => p.user?.id !== this.$store.state.auth.user?.id);
+        return otherParticipant?.user?.id === this.selectedUser.id;
       });
       
       if (existingChat) {

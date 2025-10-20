@@ -33,7 +33,7 @@
         </div>
         
         <div class="flex items-center space-x-1">
-          <button class="p-2 rounded-full hover:bg-gray-100 transition-colors">
+          <button @click="testAddMessage" class="p-2 rounded-full hover:bg-gray-100 transition-colors" title="Test Message">
             <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path>
             </svg>
@@ -62,16 +62,17 @@
         </div>
         <p class="text-lg font-medium mb-2">No messages yet</p>
         <p class="text-sm text-center max-w-xs">Start the conversation by sending a message below</p>
+        <p class="text-xs text-gray-400 mt-2">Debug: Messages count: {{ messages.length }}</p>
       </div>
       
       <div 
         v-for="message in messages" 
         :key="message.id"
         class="flex mb-1"
-        :class="message.sender.id === currentUserId ? 'justify-end' : 'justify-start'"
+        :class="message.sender?.id === currentUserId ? 'justify-end' : 'justify-start'"
       >
         <!-- Sender's messages (right side) -->
-        <div v-if="message.sender.id === currentUserId" class="flex items-end space-x-1 max-w-xs lg:max-w-md">
+        <div v-if="message.sender?.id === currentUserId" class="flex items-end space-x-1 max-w-xs lg:max-w-md">
           <div class="flex flex-col items-end">
             <!-- Message bubble -->
             <div class="bg-green-400 text-gray-900 px-3 py-2 rounded-lg shadow-sm max-w-full" 
@@ -79,15 +80,22 @@
                    'rounded-br-sm': true,
                    'rounded-tr-lg': true,
                    'rounded-tl-lg': true,
-                   'rounded-bl-lg': true
+                   'rounded-bl-lg': true,
+                   'opacity-70': message.isOptimistic
                  }">
               <!-- Reply indicator -->
               <div v-if="message.replyToMessage" class="mb-2 p-2 bg-green-600 bg-opacity-30 rounded border-l-2 border-green-300">
-                <p class="text-xs font-medium text-green-100">{{ message.replyToMessage.sender.name }}</p>
+                <p class="text-xs font-medium text-green-100 flex items-center">
+                  {{ message.replyToMessage.sender?.name || 'Unknown User' }}
+                  <span v-if="message.replyToMessage.sender?.isAdmin" class="ml-2 px-1 py-0.5 bg-green-700 bg-opacity-50 text-green-100 text-xs rounded">
+                    Admin
+                  </span>
+                </p>
                 <p class="text-xs text-green-100 truncate">{{ message.replyToMessage.content }}</p>
               </div>
               
               <p class="text-sm leading-relaxed break-words">{{ message.content }}</p>
+              <span v-if="message.isOptimistic" class="text-xs text-gray-600 italic">Sending...</span>
               
               <!-- Message metadata -->
               <div class="flex items-center justify-end mt-1 space-x-1">
@@ -117,9 +125,24 @@
                    'rounded-tr-lg': true,
                    'rounded-br-lg': true
                  }">
+              <!-- Sender name for incoming messages -->
+              <div v-if="!message.sender?.id || message.sender?.id !== currentUserId" class="mb-1">
+                <p class="text-xs font-medium text-gray-700 flex items-center">
+                  {{ message.sender?.name || 'Unknown User' }}
+                  <span v-if="message.sender?.isAdmin" class="ml-2 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+                    Admin
+                  </span>
+                </p>
+              </div>
+              
               <!-- Reply indicator -->
               <div v-if="message.replyToMessage" class="mb-2 p-2 bg-gray-100 rounded border-l-2 border-blue-500">
-                <p class="text-xs font-medium text-gray-600">{{ message.replyToMessage.sender.name }}</p>
+                <p class="text-xs font-medium text-gray-600 flex items-center">
+                  {{ message.replyToMessage.sender?.name || 'Unknown User' }}
+                  <span v-if="message.replyToMessage.sender?.isAdmin" class="ml-2 px-1 py-0.5 bg-blue-100 text-blue-800 text-xs rounded">
+                    Admin
+                  </span>
+                </p>
                 <p class="text-xs text-gray-600 truncate">{{ message.replyToMessage.content }}</p>
               </div>
               
@@ -250,7 +273,6 @@ export default {
   },
   computed: {
     ...mapState('auth', ['user']),
-    ...mapState('chat', ['messages']),
     
     currentUserId() {
       return this.user?.id;
@@ -258,20 +280,25 @@ export default {
     
     getOtherParticipant() {
       if (!this.chat.participants) return null;
-      return this.chat.participants.find(p => p.user.id !== this.currentUserId)?.user;
+      return this.chat.participants.find(p => p.user?.id !== this.currentUserId)?.user;
     }
   },
   watch: {
     messages: {
-      handler() {
+      handler(newMessages, oldMessages) {
+        console.log('Messages watcher triggered in ChatWindow');
+        console.log('New messages:', newMessages.length);
+        console.log('Old messages:', oldMessages?.length || 0);
         this.$nextTick(() => {
           this.scrollToBottom();
         });
       },
-      deep: true
+      deep: true,
+      immediate: true
     }
   },
   mounted() {
+    console.log('ChatWindow mounted with messages:', this.messages.length);
     this.scrollToBottom();
     this.markMessagesAsRead();
   },
@@ -279,15 +306,52 @@ export default {
     async sendMessage() {
       if (!this.newMessage.trim()) return;
       
-      await this.$emit('send-message', {
-        chatId: this.chat.id,
-        content: this.newMessage.trim(),
-        type: 'text'
-      });
+      const messageContent = this.newMessage.trim();
+      console.log('=== ChatWindow sendMessage START ===');
+      console.log('Message content:', messageContent);
+      console.log('Chat ID:', this.chat.id);
+      console.log('Current user ID:', this.currentUserId);
+      console.log('Messages before send:', this.messages.length);
+      console.log('Store messages before:', this.$store.state.chat.messages.length);
       
+      // Add optimistic message immediately
+      const optimisticMessage = {
+        id: `temp_${Date.now()}`,
+        chatId: this.chat.id,
+        content: messageContent,
+        type: 'text',
+        senderId: this.currentUserId,
+        sender: {
+          id: this.currentUserId,
+          name: this.user?.name || 'You',
+          email: this.user?.email || '',
+          isAdmin: this.user?.role === 'admin' || this.user?.isAdmin || false
+        },
+        createdAt: new Date().toISOString(),
+        isOptimistic: true
+      };
+      
+      console.log('Created optimistic message:', optimisticMessage);
+      console.log('Committing to store...');
+      this.$store.commit('chat/ADD_MESSAGE', optimisticMessage);
+      
+      console.log('Store messages after commit:', this.$store.state.chat.messages.length);
+      console.log('Component messages after commit:', this.messages.length);
+      
+      // Clear input immediately
       this.newMessage = '';
       this.stopTyping();
       this.adjustTextareaHeight();
+      
+      // Then send via socket
+      console.log('Emitting send-message event...');
+      await this.$emit('send-message', {
+        chatId: this.chat.id,
+        content: messageContent,
+        type: 'text'
+      });
+      
+      console.log('=== ChatWindow sendMessage END ===');
     },
     
     handleKeyDown(event) {
@@ -323,6 +387,27 @@ export default {
       textarea.style.height = 'auto';
       textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
     },
+    
+    // Test method to add a message immediately
+    testAddMessage() {
+      console.log('Testing immediate message display');
+      const testMessage = {
+        id: `test_${Date.now()}`,
+        content: 'Test message',
+        senderId: this.currentUserId,
+        sender: {
+          id: this.currentUserId,
+          name: 'Test User',
+          email: 'test@test.com',
+          isAdmin: false
+        },
+        createdAt: new Date(),
+        isOptimistic: true
+      };
+      console.log('Adding test message:', testMessage);
+      this.$store.commit('chat/ADD_MESSAGE', testMessage);
+    },
+    
     
     scrollToBottom() {
       const container = this.$refs.messagesContainer;

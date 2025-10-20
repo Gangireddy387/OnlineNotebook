@@ -7,12 +7,8 @@ module.exports = (sequelize, DataTypes) => {
     },
     userId: {
       type: DataTypes.UUID,
-      allowNull: false,
-      references: {
-        model: 'Users',
-        key: 'id'
-      },
-      unique: true
+      allowNull: false
+      // Removed foreign key constraint to support both Users and Admins
     },
     status: {
       type: DataTypes.ENUM('online', 'away', 'offline'),

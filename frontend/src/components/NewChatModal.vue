@@ -44,10 +44,16 @@
               ></div>
             </div>
             <div class="flex-1 min-w-0">
-              <h4 class="font-medium text-gray-900 truncate text-sm md:text-base">{{ selectedUser.name }}</h4>
+              <h4 class="font-medium text-gray-900 truncate text-sm md:text-base">
+                {{ selectedUser.name }}
+                <span v-if="selectedUser.isAdmin" class="ml-1 text-xs bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded-full">
+                  {{ selectedUser.role }}
+                </span>
+              </h4>
               <p class="text-xs md:text-sm text-gray-500 truncate">{{ selectedUser.email }}</p>
               <p class="text-xs text-gray-400 hidden md:block">
-                {{ selectedUser.college?.name }} • {{ selectedUser.department?.name }}
+                <span v-if="selectedUser.isAdmin">Admin User</span>
+                <span v-else>{{ selectedUser.college?.name }} • {{ selectedUser.department?.name }}</span>
               </p>
             </div>
             <div class="text-xs text-green-600 font-medium">
@@ -75,10 +81,16 @@
               ></div>
             </div>
             <div class="flex-1 min-w-0">
-              <h4 class="font-medium text-gray-900 truncate text-sm md:text-base">{{ user.name }}</h4>
+              <h4 class="font-medium text-gray-900 truncate text-sm md:text-base">
+                {{ user.name }}
+                <span v-if="user.isAdmin" class="ml-1 text-xs bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded-full">
+                  {{ user.role }}
+                </span>
+              </h4>
               <p class="text-xs md:text-sm text-gray-500 truncate">{{ user.email }}</p>
               <p class="text-xs text-gray-400 hidden md:block">
-                {{ user.college?.name }} • {{ user.department?.name }}
+                <span v-if="user.isAdmin">Admin User</span>
+                <span v-else>{{ user.college?.name }} • {{ user.department?.name }}</span>
               </p>
             </div>
             <div class="text-xs text-gray-500 hidden md:block">
@@ -112,7 +124,12 @@
               {{ selectedUser.name.charAt(0).toUpperCase() }}
             </div>
             <div>
-              <h4 class="font-medium text-gray-900 text-sm md:text-base">{{ selectedUser.name }}</h4>
+              <h4 class="font-medium text-gray-900 text-sm md:text-base">
+                {{ selectedUser.name }}
+                <span v-if="selectedUser.isAdmin" class="ml-1 text-xs bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded-full">
+                  {{ selectedUser.role }}
+                </span>
+              </h4>
               <p class="text-xs md:text-sm text-gray-500">{{ selectedUser.email }}</p>
             </div>
           </div>

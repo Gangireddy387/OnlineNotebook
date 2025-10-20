@@ -141,5 +141,31 @@ module.exports = (sequelize, DataTypes) => {
     return this.role === 'super_admin' || (this.isApproved && this.hasPermission('canCreateAdmins'));
   };
 
+  // Chat-related methods for admin users
+  Admin.prototype.canSendChatRequests = function() {
+    return this.isActive && this.isApproved;
+  };
+
+  Admin.prototype.canReceiveChatRequests = function() {
+    return this.isActive && this.isApproved;
+  };
+
+  Admin.prototype.getDisplayName = function() {
+    return this.name || 'Unknown Admin';
+  };
+
+  Admin.prototype.getDisplayInfo = function() {
+    return {
+      id: this.id,
+      name: this.name,
+      email: this.email,
+      role: this.role,
+      adminId: this.adminId,
+      isAdmin: true,
+      isActive: this.isActive,
+      isApproved: this.isApproved
+    };
+  };
+
   return Admin;
 };

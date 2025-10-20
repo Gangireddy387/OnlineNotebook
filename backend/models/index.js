@@ -3,7 +3,7 @@ require('dotenv').config();
 
 // Direct database configuration
 const sequelize = new Sequelize(
-  process.env.DB_NAME || 'onlinenotebook',
+  process.env.DB_NAME || 'online_notebook',
   process.env.DB_USER || 'postgres',
   process.env.DB_PASSWORD || 'root',
   {
@@ -53,6 +53,9 @@ db.Admin.hasMany(db.Admin, { foreignKey: 'createdBy', as: 'createdAdmins' });
 db.Admin.hasMany(db.Admin, { foreignKey: 'approvedBy', as: 'approvedAdmins' });
 db.Admin.hasMany(db.User, { foreignKey: 'approvedBy', as: 'approvedUsers' });
 
+// Admin chat associations - allow admins to participate in chats (no foreign key constraints)
+// Note: We handle admin participation through the backend logic, not through Sequelize associations
+
 // College associations
 db.College.hasMany(db.Department, { foreignKey: 'collegeId', as: 'departments', onDelete: 'CASCADE' });
 db.College.hasMany(db.User, { foreignKey: 'collegeId', as: 'users', onDelete: 'SET NULL' });
@@ -80,35 +83,35 @@ db.Comment.belongsTo(db.User, { foreignKey: 'userId', as: 'user' });
 db.Comment.belongsTo(db.Note, { foreignKey: 'noteId', as: 'note' });
 
 // Chat associations
-db.Chat.belongsTo(db.User, { foreignKey: 'createdBy', as: 'creator' });
+// db.Chat.belongsTo(db.User, { foreignKey: 'createdBy', as: 'creator', constraints: false });
 db.Chat.hasMany(db.Message, { foreignKey: 'chatId', as: 'messages', onDelete: 'CASCADE' });
 db.Chat.hasMany(db.ChatParticipant, { foreignKey: 'chatId', as: 'participants', onDelete: 'CASCADE' });
-db.Chat.belongsToMany(db.User, { through: db.ChatParticipant, foreignKey: 'chatId', as: 'users' });
+db.Chat.belongsToMany(db.User, { through: db.ChatParticipant, foreignKey: 'chatId', as: 'users', constraints: false });
 
 // Message associations
 db.Message.belongsTo(db.Chat, { foreignKey: 'chatId', as: 'chat' });
-db.Message.belongsTo(db.User, { foreignKey: 'senderId', as: 'sender' });
+// db.Message.belongsTo(db.User, { foreignKey: 'senderId', as: 'sender', constraints: false });
 db.Message.belongsTo(db.Message, { foreignKey: 'replyTo', as: 'replyToMessage' });
 db.Message.hasMany(db.Message, { foreignKey: 'replyTo', as: 'replies' });
 
-// ChatRequest associations
-db.ChatRequest.belongsTo(db.User, { foreignKey: 'requesterId', as: 'requester' });
-db.ChatRequest.belongsTo(db.User, { foreignKey: 'receiverId', as: 'receiver' });
+// ChatRequest associations - DISABLED to prevent foreign key constraints
+// db.ChatRequest.belongsTo(db.User, { foreignKey: 'requesterId', as: 'requester', constraints: false });
+// db.ChatRequest.belongsTo(db.User, { foreignKey: 'receiverId', as: 'receiver', constraints: false });
 
 // ChatParticipant associations
 db.ChatParticipant.belongsTo(db.Chat, { foreignKey: 'chatId', as: 'chat' });
-db.ChatParticipant.belongsTo(db.User, { foreignKey: 'userId', as: 'user' });
-db.User.belongsToMany(db.Chat, { through: db.ChatParticipant, foreignKey: 'userId', as: 'chats' });
+// db.ChatParticipant.belongsTo(db.User, { foreignKey: 'userId', as: 'user', constraints: false });
+// db.User.belongsToMany(db.Chat, { through: db.ChatParticipant, foreignKey: 'userId', as: 'chats' });
 
 // OnlineStatus associations
-db.OnlineStatus.belongsTo(db.User, { foreignKey: 'userId', as: 'user' });
-db.User.hasOne(db.OnlineStatus, { foreignKey: 'userId', as: 'onlineStatus' });
+db.OnlineStatus.belongsTo(db.User, { foreignKey: 'userId', as: 'user', constraints: false });
+db.User.hasOne(db.OnlineStatus, { foreignKey: 'userId', as: 'onlineStatus', constraints: false });
 
 // Additional User associations for chat
-db.User.hasMany(db.Message, { foreignKey: 'senderId', as: 'sentMessages', onDelete: 'CASCADE' });
-db.User.hasMany(db.ChatRequest, { foreignKey: 'requesterId', as: 'sentChatRequests', onDelete: 'CASCADE' });
-db.User.hasMany(db.ChatRequest, { foreignKey: 'receiverId', as: 'receivedChatRequests', onDelete: 'CASCADE' });
-db.User.hasMany(db.ChatParticipant, { foreignKey: 'userId', as: 'chatParticipants', onDelete: 'CASCADE' });
+// db.User.hasMany(db.Message, { foreignKey: 'senderId', as: 'sentMessages', onDelete: 'CASCADE', constraints: false });
+// db.User.hasMany(db.ChatRequest, { foreignKey: 'requesterId', as: 'sentChatRequests', onDelete: 'CASCADE', constraints: false });
+// db.User.hasMany(db.ChatRequest, { foreignKey: 'receiverId', as: 'receivedChatRequests', onDelete: 'CASCADE', constraints: false });
+// db.User.hasMany(db.ChatParticipant, { foreignKey: 'userId', as: 'chatParticipants', onDelete: 'CASCADE', constraints: false });
 
 module.exports = db;
 
