@@ -7,8 +7,8 @@ const { protect } = require('../middleware/auth');
 
 // Generate JWT Token
 const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRE
+  return jwt.sign({ id }, process.env.JWT_SECRET || 'your-secret-key', {
+    expiresIn: process.env.JWT_EXPIRE || '30d'
   });
 };
 
@@ -44,7 +44,7 @@ router.post('/register', [
 
     // Find or create department
     let department = await db.Department.findOne({
-      where: { 
+      where: {
         name: departmentName,
         collegeId: collegeId
       }
@@ -101,8 +101,8 @@ router.post('/login', [
     const { email, password } = req.body;
 
     // First check if it's an admin
-    let admin = await db.Admin.findOne({ 
-      where: { 
+    let admin = await db.Admin.findOne({
+      where: {
         email,
         isActive: true
       }
@@ -137,7 +137,7 @@ router.post('/login', [
     }
 
     // If not admin, check regular user
-    const user = await db.User.findOne({ 
+    const user = await db.User.findOne({
       where: { email },
       include: [
         { model: db.College, as: 'college' },
@@ -157,7 +157,7 @@ router.post('/login', [
 
     // Check if approved
     if (!user.isApproved) {
-      return res.status(403).json({ 
+      return res.status(403).json({
         message: 'Your account is pending approval by admin',
         isApproved: false
       });
@@ -195,7 +195,7 @@ router.get('/me', protect, async (req, res) => {
     });
 
     if (admin) {
-      return res.json({ 
+      return res.json({
         user: {
           id: admin.id,
           name: admin.name,
@@ -224,7 +224,7 @@ router.get('/me', protect, async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    res.json({ 
+    res.json({
       user: {
         id: user.id,
         name: user.name,

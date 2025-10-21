@@ -13,19 +13,19 @@ exports.protect = async (req, res, next) => {
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+
     // First check if it's an admin
     let admin = await db.Admin.findByPk(decoded.id);
     if (admin) {
       // Check if admin is approved (super_admin is always approved)
       if (!admin.isApproved && admin.role !== 'super_admin') {
-        return res.status(403).json({ 
+        return res.status(403).json({
           message: 'Your admin account is pending approval by super admin',
           isApproved: false
         });
       }
-      
+
       req.user = admin;
       req.userType = 'admin';
       return next();
@@ -53,7 +53,7 @@ exports.authorize = (...roles) => {
       if (req.user.role === 'super_admin' || roles.includes(req.user.role)) {
         return next();
       }
-      
+
       return res.status(403).json({
         message: `Admin role ${req.user.role} is not authorized to access this route`
       });
@@ -72,7 +72,7 @@ exports.canApprove = (req, res, next) => {
     if (req.user.role === 'super_admin' || req.user.role === 'admin') {
       return next();
     }
-    
+
     return res.status(403).json({
       message: 'Only super admin and admin can approve users'
     });
